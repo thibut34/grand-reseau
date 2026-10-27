@@ -1,0 +1,1469 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Grand Réseau</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap">
+<style>
+/* Plein écran : une carte routière façon atlas en fond, des panneaux sombres façon signalisation par-dessus */
+:root{
+  --ink:#111827; --panel:rgba(19,27,45,.94); --panel-2:#1e2942; --line:#2f3c5c; --text:#eef2f8; --muted:#98a4c0;
+  --blue:#2f6fd6; --red:#dc4437; --yellow:#f5cf4f; --ok:#45c08a; --warn:#f2a33a; --bad:#ee5a5a;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --topH:72px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--ink);color:var(--text);font-family:var(--body);font-size:14px}
+body{user-select:none;-webkit-user-select:none}
+#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.35);backdrop-filter:blur(6px)}
+
+/* Barre du haut */
+#top{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));display:flex;align-items:center;flex-wrap:wrap;gap:4px 0;padding:6px 8px;z-index:6}
+.brand{display:flex;align-items:center;gap:9px;padding:0 14px 0 2px;border-right:1px solid var(--line)}
+.brand b{font-family:var(--display);font-size:21px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
+.stat{display:flex;flex-direction:column;justify-content:center;padding:0 13px;min-width:0;border-right:1px solid rgba(47,60,92,.5)}
+.stat label{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);white-space:nowrap}
+.stat span{font-family:var(--display);font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.15;white-space:nowrap}
+.stat small{font-size:11.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pos{color:var(--ok)}.neg{color:var(--bad)}.mid{color:var(--warn)}
+.speeds{display:flex;gap:3px;align-items:center;margin-left:auto;padding-left:10px}
+.btn{height:32px;min-width:34px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2);display:inline-grid;place-items:center;padding:0 9px;font-weight:600;font-size:13px;white-space:nowrap}
+.btn:hover{border-color:#4a5b85}
+.speeds .btn.on{background:var(--yellow);color:#1a1a1a;border-color:var(--yellow)}
+.btn.on{background:var(--blue);border-color:var(--blue)}
+.btn.primary{background:var(--yellow);color:#1a1a1a;border-color:var(--yellow)}
+.btn.danger{background:#3a1d22;border-color:#7a2f36;color:#ffc9cd}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.menu{display:flex;gap:3px;padding-left:10px;margin-left:8px;border-left:1px solid var(--line)}
+
+/* Outils */
+#tools{position:fixed;left:max(8px,env(safe-area-inset-left,0px));top:var(--topH);width:186px;max-height:calc(100% - var(--topH) - 168px);overflow:auto;display:flex;flex-direction:column;gap:2px;padding:6px;z-index:5}
+#tools h3{margin:6px 6px 3px;font:600 10.5px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tool{display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:8px;text-align:left;padding:6px 7px;border-radius:7px;border:1px solid transparent;background:transparent}
+.tool:hover{background:var(--panel-2)}
+.tool.on{background:var(--panel-2);border-color:var(--yellow)}
+.tool .nm{font-weight:600;line-height:1.15;display:block}
+.tool .ct{display:block;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;font-weight:500}
+.tool kbd{font:600 10.5px var(--body);color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.tool.locked{opacity:.42}
+.sw{width:32px;height:24px;border-radius:5px;display:grid;place-items:center;background:#dce7c3;overflow:hidden}
+.sw i{display:block;width:100%}
+.sw.l1 i{height:4px;background:#fbf6ea;box-shadow:0 0 0 1px #9c8c6e}
+.sw.l2 i{height:6px;background:#f5cf4f;box-shadow:0 0 0 1px #8d6c18}
+.sw.l3 i{height:8px;background:#dc4437;box-shadow:0 0 0 1px #7c1e17}
+.sw.l4 i{height:11px;background:#2f6fd6;box-shadow:0 0 0 1.5px #163c80}
+.sw svg{display:block}
+
+/* Panneau latéral */
+#side{position:fixed;right:max(8px,env(safe-area-inset-right,0px));top:var(--topH);width:318px;max-height:calc(100% - var(--topH) - 8px);display:flex;flex-direction:column;z-index:5}
+.tabs{display:flex;gap:2px;padding:6px;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;background:transparent;border:1px solid transparent;border-radius:6px;padding:6px 2px;font-weight:600;font-size:12.5px;color:var(--muted)}
+.tabs button.on{background:var(--panel-2);color:var(--text);border-color:var(--line)}
+.tabpane{padding:12px 14px 14px;overflow:auto;min-height:0}
+.tabpane h2{margin:0 0 2px;font:700 22px/1.1 var(--display);letter-spacing:.02em;text-wrap:balance}
+.tabpane h4{margin:14px 0 6px;font:600 10.5px var(--body);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.sub{color:var(--muted);font-size:12.5px;margin-bottom:10px}
+.hint{color:var(--muted);line-height:1.5;margin:0}
+.kv{display:grid;grid-template-columns:1fr auto;gap:5px 10px;font-variant-numeric:tabular-nums}
+.kv dt{color:var(--muted)}.kv dd{margin:0;text-align:right;font-weight:600}
+.actions{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.actions .btn{height:36px;width:100%}
+.bar{height:6px;border-radius:3px;background:#0e1527;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);border-radius:3px}
+.obj{padding:10px 0;border-bottom:1px solid rgba(47,60,92,.6);display:grid;gap:6px}
+.obj-h{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.obj-h b{font-weight:600;line-height:1.3}
+.rw{color:var(--yellow);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.obj small{color:var(--muted);font-variant-numeric:tabular-nums}
+.unl{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+.unl span:last-child{color:var(--muted)}
+.unl.ok span:last-child{color:var(--ok)}
+.crow{display:grid;grid-template-columns:1fr auto;gap:2px 10px;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid rgba(47,60,92,.6);padding:8px 2px}
+.crow:hover{background:rgba(30,41,66,.6)}
+.crow b{font-weight:600}
+.crow small{color:var(--muted);font-variant-numeric:tabular-nums}
+.crow .bar{grid-column:1/-1;margin-top:3px}
+.range{width:100%;accent-color:var(--yellow)}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:700;background:var(--panel-2);border:1px solid var(--line)}
+#finCv{width:100%;height:120px;display:block}
+
+/* Minicarte */
+#miniWrap{position:fixed;left:max(8px,env(safe-area-inset-left,0px));bottom:calc(8px + env(safe-area-inset-bottom,0px));padding:6px;z-index:5;display:flex;gap:6px;align-items:flex-end}
+#mini{width:216px;height:138px;display:block;border-radius:5px;cursor:pointer;touch-action:none}
+.zoom{display:flex;flex-direction:column;gap:4px}
+
+#tip{position:fixed;z-index:8;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:6px 9px;font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+#tip b{font-weight:700}
+#toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column-reverse;gap:6px;z-index:7;width:min(460px,calc(100% - 32px));pointer-events:none}
+.toast{pointer-events:auto;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--blue);border-radius:8px;padding:9px 12px;line-height:1.35;box-shadow:0 8px 24px rgba(0,0,0,.35);animation:tin .25s ease-out}
+.toast.ok{border-left-color:var(--ok)}.toast.bad{border-left-color:var(--bad)}.toast.warn{border-left-color:var(--warn)}.toast.gold{border-left-color:var(--yellow)}
+.toast.click{cursor:pointer}
+.toast.out{opacity:0;transform:translateY(6px);transition:.3s}
+@keyframes tin{from{opacity:0;transform:translateY(8px)}}
+#pauseTag{position:fixed;top:calc(var(--topH) + 4px);left:50%;transform:translateX(-50%);z-index:5;font:700 13px var(--display);letter-spacing:.2em;background:var(--yellow);color:#1a1a1a;padding:4px 12px;border-radius:4px;pointer-events:none}
+
+/* Fenêtres */
+#modal{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:rgba(6,10,20,.62);padding:16px}
+.card{width:min(600px,100%);max-height:calc(100% - 16px);overflow:auto;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:24px 26px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.card h1{margin:0 0 4px;font:700 40px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;text-wrap:balance}
+.card .lead{color:var(--muted);margin:0 0 16px;font-size:15px;line-height:1.45}
+.card ul{margin:0 0 18px;padding-left:18px;line-height:1.55}
+.card li{margin-bottom:4px}
+.card .row{display:flex;gap:8px;flex-wrap:wrap}
+.card .row .btn{height:40px;padding:0 18px;font-size:14px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin-bottom:18px}
+.keys kbd{font:600 12px var(--body);border:1px solid var(--line);border-radius:4px;padding:2px 7px;background:var(--ink);white-space:nowrap;justify-self:start}
+.signrow{display:flex;gap:6px;margin-bottom:14px}
+.signrow span{font:700 13px var(--display);letter-spacing:.06em;padding:3px 9px;border-radius:4px;color:#fff}
+
+#sideToggle{display:none}
+@media (max-width:1180px){.stat.opt{display:none}}
+@media (max-width:760px){
+  .brand b{font-size:17px}
+  .stat{padding:0 8px}.stat span{font-size:17px}
+  .menu{margin-left:0;border-left:0;padding-left:4px}
+  #tools{top:auto;bottom:calc(8px + env(safe-area-inset-bottom,0px));right:max(8px,env(safe-area-inset-right,0px));width:auto;max-height:none;flex-direction:row;overflow-x:auto;padding:4px}
+  #tools h3{display:none}
+  .tool{grid-template-columns:32px;justify-items:center;gap:2px;padding:4px 2px;flex:0 0 auto;width:62px}
+  .tool .ct,.tool kbd{display:none}
+  .tool .nm{font-size:10.5px;text-align:center}
+  #side{left:max(8px,env(safe-area-inset-left,0px));width:auto;top:auto;bottom:86px;max-height:46%}
+  #side.closed{display:none}
+  #miniWrap{display:none}
+  #sideToggle{display:inline-grid}
+  #toasts{bottom:92px}
+}
+@media (prefers-reduced-motion:reduce){.toast{animation:none}}
+</style>
+
+<canvas id="cv" aria-label="Carte de la région"></canvas>
+
+<header id="top" class="panel">
+  <div class="brand">
+    <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect x="1" y="1" width="28" height="28" rx="5" fill="#2f6fd6" stroke="#fff" stroke-width="1.5"/><path d="M10.5 25 L13.6 6.5 M19.5 25 L16.4 6.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><path d="M15 23v-3M15 16.5v-3M15 10.5v-2.5" stroke="#fff" stroke-width="1.4"/></svg>
+    <b>Grand Réseau</b>
+  </div>
+  <div class="stat"><label>Budget</label><span id="sMoney">0 €</span><small id="sDelta"></small></div>
+  <div class="stat"><label>Population</label><span id="sPop">0</span></div>
+  <div class="stat"><label>Satisfaction</label><span id="sSat">0 %</span></div>
+  <div class="stat opt"><label>Véhicules</label><span id="sVeh">0</span></div>
+  <div class="stat"><label id="sDay">Jour 1</label><span id="sTime">06:00</span></div>
+  <div class="stat opt"><label>Météo</label><span id="sWeather">Dégagé</span></div>
+  <div class="speeds" id="speeds">
+    <button class="btn" data-speed="0" title="Pause (Espace)">Pause</button>
+    <button class="btn" data-speed="1" title="Vitesse normale">×1</button>
+    <button class="btn" data-speed="2" title="Vitesse ×2">×2</button>
+    <button class="btn" data-speed="4" title="Vitesse ×4">×4</button>
+    <button class="btn" data-speed="8" title="Vitesse ×8">×8</button>
+  </div>
+  <div class="menu">
+    <button class="btn" id="bHeat" title="Afficher les bouchons (H)">Trafic</button>
+    <button class="btn" id="bSound" title="Activer ou couper le son">Son</button>
+    <button class="btn" id="bSave" title="Sauvegarder la partie">Sauver</button>
+    <button class="btn" id="bNew" title="Nouvelle partie">Nouvelle</button>
+    <button class="btn" id="bHelp" title="Aide et raccourcis">?</button>
+    <button class="btn" id="sideToggle" title="Afficher le panneau">Infos</button>
+  </div>
+</header>
+
+<nav id="tools" class="panel" aria-label="Outils"></nav>
+
+<aside id="side" class="panel">
+  <div class="tabs" role="tablist">
+    <button data-tab="sel" class="on">Sélection</button>
+    <button data-tab="obj">Objectifs</button>
+    <button data-tab="city">Villes</button>
+    <button data-tab="fin">Finances</button>
+  </div>
+  <div class="tabpane" id="tab-sel"></div>
+  <div class="tabpane" id="tab-obj" hidden></div>
+  <div class="tabpane" id="tab-city" hidden></div>
+  <div class="tabpane" id="tab-fin" hidden><h4 style="margin-top:0">Solde des 14 derniers jours</h4><canvas id="finCv"></canvas><div id="finBody"></div></div>
+</aside>
+
+<div id="miniWrap" class="panel">
+  <canvas id="mini" aria-label="Minicarte"></canvas>
+  <div class="zoom"><button class="btn" id="zIn" title="Zoomer">+</button><button class="btn" id="zOut" title="Dézoomer">−</button></div>
+</div>
+
+<div id="pauseTag" hidden>PAUSE</div>
+<div id="tip" hidden></div>
+<div id="toasts" aria-live="polite"></div>
+<div id="modal" hidden><div class="card" id="modalCard"></div></div>
+
+<script>
+'use strict';
+(() => {
+// ================================================================ Constantes
+const W = 72, H = 46, T = 24, N = W * H, RES = 2;
+const MIN_PER_SEC = 2;          // minutes de jeu par seconde réelle à ×1
+const MAXV = 900;               // véhicules simultanés max
+const DEMAND = 1.6;             // véhicules / heure / 1000 habitants
+const SAVE_KEY = 'grandReseau.save.v1';
+const ROAD = [null,
+  {name:'Chemin',    speed:30,  cap:4,  cost:40,  upkeep:1,  fill:'#fbf6ea', casing:'#9c8c6e', w:3.4, cw:5.6, lanes:[1.1]},
+  {name:'Route',     speed:50,  cap:8,  cost:120, upkeep:3,  fill:'#f5cf4f', casing:'#8d6c18', w:4.8, cw:7.2, lanes:[1.5]},
+  {name:'Nationale', speed:80,  cap:16, cost:320, upkeep:8,  fill:'#dc4437', casing:'#7c1e17', w:7,   cw:9.6, lanes:[2.6,1.1]},
+  {name:'Autoroute', speed:130, cap:30, cost:850, upkeep:20, fill:'#2f6fd6', casing:'#163c80', w:10,  cw:13,  lanes:[3.7,1.6]}];
+const STREET = {name:'Rue', speed:35, cap:8, fill:'#ffffff', casing:'#b4aa9b', w:4, cw:6, lanes:[1.2]};
+const TERR = [{n:'Prairie',m:1},{n:'Forêt',m:1.4},{n:'Rivière / lac',m:5},{n:'Montagne',m:4},{n:'Plage',m:1.1}];
+const WEATHER = [{n:'Dégagé',sp:1,acc:1},{n:'Pluie',sp:.85,acc:1.8},{n:'Brouillard',sp:.72,acc:2.2},{n:'Neige',sp:.6,acc:3}];
+const TOLL_COST = 2500, TELE_COST = 3000, RADAR_COST = 800, TOW_COST = 500;
+const CAR_COLORS = ['#e5484d','#3e63dd','#f2f2f2','#2b2f36','#30a46c','#f76b15','#8e4ec6','#ffc53d','#7b8794','#12a594'];
+const NAMES = ['Valbrune','Montsoleil','Rochemaure','Bellerive','Clairval','Fontvert','Castelroc','Mirebelle','Vernois','Port-Aurel','Sainte-Lise','Hautemont','Lussigny','Brévannes','Sauveterre','Chantemerle','Roquebrune','Pierrefeu','Montargent','Saint-Clair','Bois-Joli','Les Granges','Aigueblanche','Vallon-d\'Or','Gramont','Lanvic'];
+const DIRS = [[1,0],[-1,0],[0,1],[0,-1]];
+
+// ================================================================ Utilitaires
+const $ = s => document.querySelector(s);
+const clamp = (v,a,b) => v < a ? a : v > b ? b : v;
+const lerp = (a,b,t) => a + (b-a)*t;
+const fmt = n => Math.round(n).toLocaleString('fr-FR');
+const eur = n => fmt(n) + ' €';
+const pct = n => Math.round(n*100) + ' %';
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function hsh(i,k){let h=Math.imul(i*374761393+k*668265263|0,1274126177);h^=h>>>13;h=Math.imul(h,1103515245);return((h^h>>>16)>>>0)/4294967296}
+function makeNoise(r){
+  const p = new Float32Array(65536); for (let i=0;i<p.length;i++) p[i]=r();
+  const g = (a,b) => p[(a&255)+((b&255)<<8)];
+  const val = (x,y) => {const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf);
+    return lerp(lerp(g(xi,yi),g(xi+1,yi),u),lerp(g(xi,yi+1),g(xi+1,yi+1),u),v)};
+  return (x,y) => {let s=0,a=1,f=1,t=0;for(let o=0;o<4;o++){s+=val(x*f,y*f)*a;t+=a;a*=.5;f*=2}return s/t};
+}
+const tx = i => i % W, ty = i => (i / W) | 0;
+const satClass = s => s < .4 ? 'neg' : s < .6 ? 'mid' : 'pos';
+function hm(min){const m=((min%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,'0')+':'+String(Math.floor(m%60)).padStart(2,'0')}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+// ================================================================ État
+let seed, terrain, deco, road, urban, worksT, worksLvl, worksDur, toll, tollTele, equipRev, radar, radarCover, accident, load, flow, comp, spd, capA, flash;
+let cities = [], vehicles = [], worksList = [], accList = [], namePool = [], nameIdx = 0;
+let money = 0, gameMin = 0, stats, today, history = [], objectives = [], weather;
+let paused = false, speed = 1, lastSpeed = 1, gameOver = false, heat = false, muted = false;
+let netDirty = true, mapDirty = true, miniDirty = true, rerouteBudget = 0;
+let tool = 'inspect', sel = -1, hover = -1, drag = null, preview = null;
+const cam = {x:0, y:0, z:1};
+
+function allocArrays(){
+  terrain=new Uint8Array(N); deco=new Float32Array(N); road=new Uint8Array(N); urban=new Uint8Array(N);
+  worksT=new Float32Array(N); worksLvl=new Uint8Array(N); worksDur=new Float32Array(N);
+  toll=new Float32Array(N); tollTele=new Uint8Array(N); equipRev=new Float32Array(N);
+  radar=new Uint8Array(N); radarCover=new Uint8Array(N); accident=new Float32Array(N);
+  load=new Float32Array(N); flow=new Float32Array(N); comp=new Int32Array(N);
+  spd=new Float32Array(N); capA=new Float32Array(N); flash=new Float32Array(N);
+}
+const freshToday = () => ({inc:{trips:0,toll:0,fines:0,tax:0,bonus:0,other:0}, exp:{build:0,maint:0,other:0}, trips:0, acc:0});
+function earn(v,cat){money+=v;today.inc[cat]+=v}
+function spend(v,cat){money-=v;today.exp[cat]+=v}
+const drivable = i => road[i] > 0 || urban[i] > 0;
+
+// ================================================================ Génération de la région
+function newCity(x,y,pop,name,village){
+  return {id:cities.length, name, x, y, pop, sat:.5, g:0, acc:0, tiles:[], dest:[], destW:0, comp:-1, village:!!village, tripsDay:0};
+}
+function nextName(){ return nameIdx < namePool.length ? namePool[nameIdx++] : 'Hameau ' + (++nameIdx - namePool.length); }
+
+function genMap(sd){
+  allocArrays();
+  const r = mulberry32(sd);
+  const ne = makeNoise(r), nm = makeNoise(r);
+  const e = new Float32Array(N); let mn = 9, mx = -9;
+  for (let i=0;i<N;i++){const v=ne(tx(i)*.075,ty(i)*.075);e[i]=v;if(v<mn)mn=v;if(v>mx)mx=v}
+  for (let i=0;i<N;i++){
+    const v=(e[i]-mn)/(mx-mn), m=nm(tx(i)*.1+40,ty(i)*.1+40);
+    terrain[i] = v < .2 ? 2 : v > .8 ? 3 : m > .57 ? 1 : 0;
+    deco[i] = r();
+  }
+  // Une rivière traverse la région du nord au sud
+  let x = Math.floor(W*(.25+r()*.5));
+  for (let y=0;y<H;y++){
+    terrain[y*W+x]=2; if (r()<.3 && x+1<W) terrain[y*W+x+1]=2;
+    if (r()<.4){const nx=clamp(x+(r()<.5?-1:1),2,W-3);terrain[y*W+nx]=2;x=nx}
+  }
+  for (let i=0;i<N;i++){
+    if (terrain[i]!==0 || deco[i]>.55) continue;
+    for (const [dx,dy] of DIRS){const nx=tx(i)+dx,ny=ty(i)+dy;if(nx>=0&&ny>=0&&nx<W&&ny<H&&terrain[ny*W+nx]===2){terrain[i]=4;break}}
+  }
+  namePool = NAMES.slice();
+  for (let i=namePool.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[namePool[i],namePool[j]]=[namePool[j],namePool[i]]}
+  nameIdx = 0; cities = [];
+  const sizes = [46000,23000,17000,9500,6500,4200,2600];
+  let minD = 12;
+  for (let tries=0; cities.length<sizes.length && tries<8000; tries++){
+    if (tries===3000) minD = 9; if (tries===6000) minD = 7;
+    const cx=3+Math.floor(r()*(W-6)), cy=3+Math.floor(r()*(H-6)), i=cy*W+cx;
+    if (terrain[i]===2||terrain[i]===3) continue;
+    let land=0; for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const t=terrain[(cy+dy)*W+cx+dx];if(t!==2&&t!==3)land++}
+    if (land<19) continue;
+    if (cities.some(c=>Math.hypot(c.x-cx,c.y-cy)<minD)) continue;
+    cities.push(newCity(cx,cy,sizes[cities.length],nextName()));
+  }
+}
+
+function cityRadius(c){
+  let R = .7 + Math.sqrt(c.pop)/52;
+  for (const o of cities) if (o!==c){const d=Math.hypot(o.x-c.x,o.y-c.y);R=Math.min(R,d/2-.4)}
+  return Math.max(.8,R);
+}
+function computeUrban(){
+  urban.fill(0);
+  const order = cities.slice().sort((a,b)=>b.pop-a.pop);
+  const mark = new Uint8Array(N);
+  for (const c of order){
+    const R = cityRadius(c), rr = Math.ceil(R)+1, ci = c.y*W+c.x;
+    mark.fill(0);
+    for (let dy=-rr;dy<=rr;dy++) for (let dx=-rr;dx<=rr;dx++){
+      const x=c.x+dx,y=c.y+dy; if(x<0||y<0||x>=W||y>=H) continue;
+      const i=y*W+x; if (urban[i]) continue;
+      if (terrain[i]===2||terrain[i]===3) continue;
+      if (Math.hypot(dx,dy)+(deco[i]-.5)*.9 <= R) mark[i]=1;
+    }
+    if (!urban[ci]) mark[ci]=1;
+    // On ne garde que les quartiers reliés au centre
+    c.tiles = []; if (!mark[ci]) continue;
+    const q=[ci]; mark[ci]=2;
+    while(q.length){const i=q.pop();urban[i]=c.id+1;c.tiles.push(i);
+      for(const [dx,dy] of DIRS){const nx=tx(i)+dx,ny=ty(i)+dy;if(nx<0||ny<0||nx>=W||ny>=H)continue;const n=ny*W+nx;if(mark[n]===1){mark[n]=2;q.push(n)}}}
+  }
+}
+
+function computeComps(){
+  comp.fill(-1); let id=0; const q=[];
+  for (let s=0;s<N;s++){
+    if (comp[s]>=0 || !drivable(s)) continue;
+    comp[s]=id; q.length=0; q.push(s);
+    while(q.length){const i=q.pop();for(const [dx,dy] of DIRS){const nx=tx(i)+dx,ny=ty(i)+dy;if(nx<0||ny<0||nx>=W||ny>=H)continue;const n=ny*W+nx;if(comp[n]<0&&drivable(n)){comp[n]=id;q.push(n)}}}
+    id++;
+  }
+  for (const c of cities) c.comp = comp[c.y*W+c.x];
+  for (const c of cities){
+    c.dest=[]; c.destW=0;
+    if (c.comp<0) continue;
+    for (const o of cities){
+      if (o===c || o.comp!==c.comp) continue;
+      const w = o.pop / Math.pow(Math.hypot(o.x-c.x,o.y-c.y)+6, 1.3);
+      c.dest.push({c:o,w}); c.destW+=w;
+    }
+  }
+}
+function updateRadarCover(){
+  radarCover.fill(0);
+  for (let i=0;i<N;i++) if (radar[i]) for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++){
+    const x=tx(i)+dx,y=ty(i)+dy; if(x>=0&&y>=0&&x<W&&y<H) radarCover[y*W+x]=1;
+  }
+}
+
+// ================================================================ Recherche de chemin
+const gS=new Float32Array(N), from=new Int32Array(N), stamp=new Uint32Array(N), closedS=new Uint32Array(N);
+const heapI=new Int32Array(N*5), heapF=new Float32Array(N*5); let hn=0, gen=0;
+function hpush(i,f){let k=hn++;while(k>0){const p=(k-1)>>1;if(heapF[p]<=f)break;heapI[k]=heapI[p];heapF[k]=heapF[p];k=p}heapI[k]=i;heapF[k]=f}
+function hpop(){const top=heapI[0];hn--;if(hn>0){const i=heapI[hn],f=heapF[hn];let k=0;for(;;){let c=2*k+1;if(c>=hn)break;if(c+1<hn&&heapF[c+1]<heapF[c])c++;if(heapF[c]>=f)break;heapI[k]=heapI[c];heapF[k]=heapF[c];k=c}heapI[k]=i;heapF[k]=f}return top}
+function trace(g){const p=[];for(let i=g;i!==-1;i=from[i])p.push(i);return p.reverse()}
+
+// Itinéraire d'un conducteur : temps de parcours (minutes) + péages convertis en minutes
+function route(s,g,vot,truck){
+  gen++; hn=0; stamp[s]=gen; gS[s]=0; from[s]=-1;
+  const gx=tx(g), gy=ty(g), hk=60/(truck?90:130);
+  hpush(s,(Math.abs(tx(s)-gx)+Math.abs(ty(s)-gy))*hk);
+  while(hn>0){
+    const cur=hpop();
+    if (closedS[cur]===gen) continue; closedS[cur]=gen;
+    if (cur===g) return trace(g);
+    const cx=tx(cur), cy=ty(cur);
+    for (let d=0;d<4;d++){
+      const nx=cx+DIRS[d][0], ny=cy+DIRS[d][1]; if(nx<0||ny<0||nx>=W||ny>=H) continue;
+      const n=ny*W+nx; if (closedS[n]===gen) continue;
+      let sp=spd[n]; if (sp<=0) continue; if (truck&&sp>90) sp=90;
+      let c=gS[cur]+60/sp;
+      if (toll[n]>0) c+=toll[n]*(truck?2.5:1)/vot;
+      if (stamp[n]!==gen || c<gS[n]){stamp[n]=gen;gS[n]=c;from[n]=cur;hpush(n,c+(Math.abs(nx-gx)+Math.abs(ny-gy))*hk)}
+    }
+  }
+  return null;
+}
+
+// Coût de construction / d'amélioration d'un tronçon
+function curLevel(i){return worksT[i]>0 ? worksLvl[i] : road[i]}
+function buildCost(i,L){
+  const cur=curLevel(i); if (cur>=L) return 0;
+  let c=(ROAD[L].cost-(cur?ROAD[cur].cost:0))*TERR[terrain[i]].m;
+  if (urban[i]) c*=1.3;
+  return Math.round(c);
+}
+function planPath(s,g,L){
+  gen++; hn=0; stamp[s]=gen; gS[s]=buildCost(s,L); from[s]=-1;
+  const step=ROAD[L].cost*.15, gx=tx(g), gy=ty(g);
+  hpush(s,gS[s]);
+  while(hn>0){
+    const cur=hpop();
+    if (closedS[cur]===gen) continue; closedS[cur]=gen;
+    if (cur===g) return trace(g);
+    const cx=tx(cur), cy=ty(cur);
+    for (let d=0;d<4;d++){
+      const nx=cx+DIRS[d][0], ny=cy+DIRS[d][1]; if(nx<0||ny<0||nx>=W||ny>=H) continue;
+      const n=ny*W+nx; if (closedS[n]===gen) continue;
+      const c=gS[cur]+buildCost(n,L)+step;
+      if (stamp[n]!==gen || c<gS[n]){stamp[n]=gen;gS[n]=c;from[n]=cur;hpush(n,c+(Math.abs(nx-gx)+Math.abs(ny-gy))*step)}
+    }
+  }
+  return null;
+}
+function lPath(s,g){const p=[s];let x=tx(s),y=ty(s);const gx=tx(g),gy=ty(g);while(x!==gx){x+=Math.sign(gx-x);p.push(y*W+x)}while(y!==gy){y+=Math.sign(gy-y);p.push(y*W+x)}return p}
+
+// ================================================================ Simulation
+function todFactor(h){return .22+1.7*Math.exp(-((h-8)**2)/2)+1.9*Math.exp(-((h-17.5)**2)/2.5)+.75*Math.exp(-((h-13)**2)/8)}
+const hour = () => (gameMin%1440)/60;
+const dayNum = () => Math.floor(gameMin/1440)+1;
+
+function updateSpeeds(){
+  const wf=WEATHER[weather.t].sp;
+  for (let i=0;i<N;i++){
+    const L=road[i];
+    if (!L && !urban[i]){spd[i]=0;continue}
+    let s,c;
+    if (L){s=ROAD[L].speed;c=ROAD[L].cap} else {s=STREET.speed;c=STREET.cap}
+    if (worksT[i]>0 && L){s=Math.min(s,25);c*=.5}
+    if (toll[i]>0){ if (tollTele[i]) s=Math.min(s,70); else {s=Math.min(s,25);c*=.6} }
+    capA[i]=c;
+    if (accident[i]>0){spd[i]=0;continue}
+    const r=load[i]/c, r2=r*r;
+    s=s*wf/(1+.15*r2*r2);
+    spd[i]=s<3?3:s;
+  }
+}
+
+function spawn(c){
+  let r=Math.random()*c.destW, d=null;
+  for (const e of c.dest){r-=e.w;if(r<=0){d=e.c;break}}
+  if (!d) d=c.dest[c.dest.length-1].c;
+  const s=c.tiles.length?c.tiles[(Math.random()*c.tiles.length)|0]:c.y*W+c.x;
+  const g=d.tiles.length?d.tiles[(Math.random()*d.tiles.length)|0]:d.y*W+d.x;
+  if (s===g) return;
+  if (load[s]>capA[s]*1.5) return;                     // quartier saturé : les habitants renoncent à partir
+  const truck=Math.random()<.18, vot=truck?.6:.1+Math.random()*.45;
+  const p=route(s,g,vot,truck); if (!p||p.length<2) return;
+  // Un péage trop cher fait renoncer une partie des conducteurs
+  let tc=0; for (const i of p) if (toll[i]>0) tc+=toll[i]*(truck?2.5:1);
+  if (tc>0 && Math.random()<Math.min(.75,tc/(truck?40:18))){stats.cancelled=(stats.cancelled||0)+1;return}
+  const v={path:p,seg:0,t:0,occ:s,goal:g,w:truck?2:1,truck,from:c,to:d,vot,t0:gameMin,
+    dist:Math.hypot(tx(s)-tx(g),ty(s)-ty(g)),toll:0,wait:0,stuck:0,rr:14+((Math.random()*10)|0),
+    lane:truck?0:(Math.random()<.6?0:1),col:truck?'#eef0f2':CAR_COLORS[(Math.random()*CAR_COLORS.length)|0],
+    cab:CAR_COLORS[(Math.random()*CAR_COLORS.length)|0]};
+  load[s]+=v.w; vehicles.push(v); c.tripsDay++;
+}
+
+function onEnter(v,b){
+  flow[b]+=v.w;
+  if (toll[b]>0){const p=toll[b]*(v.truck?2.5:1);v.toll+=p;equipRev[b]+=p;stats.tollTotal+=p;earn(p,'toll')}
+  if (radar[b] && Math.random()<.04){earn(35,'fines');equipRev[b]+=35;stats.finesTotal+=35;flash[b]=1}
+  const r=Math.min(2,load[b]/(capA[b]||1));
+  const p=.000012*(1+4*r*r)*WEATHER[weather.t].acc*(radarCover[b]?.45:1)*(road[b]===1?1.6:1);
+  if (accList.length<6 && !urban[b] && Math.random()<p) makeAccident(b);
+}
+function makeAccident(i){
+  if (accident[i]>0) return;
+  accident[i]=40+Math.random()*80; accList.push(i); today.acc++; stats.accTotal++;
+  const c=nearestCity(i);
+  toast(`Accident ${c?'près de '+esc(c.name):''} : la voie est bloquée. Cliquez pour y aller.`,'bad',i);
+  sfx.crash();
+}
+function nearestCity(i){let b=null,bd=1e9;for(const c of cities){const d=Math.hypot(c.x-tx(i),c.y-ty(i));if(d<bd){bd=d;b=c}}return b}
+
+function endTrip(v,ok){
+  load[v.occ]-=v.w; if (load[v.occ]<0) load[v.occ]=0;
+  let s=0;
+  if (ok){
+    const tt=Math.max(1,gameMin-v.t0), ideal=v.dist*.75;
+    s=clamp(clamp(ideal/tt*1.2,0,1)-Math.min(.35,v.toll/20),0,1);
+    earn((1+v.dist*.1)*(v.truck?1.8:1),'trips');
+    stats.totalTrips++; today.trips++;
+  } else stats.failed++;
+  v.from.sat+=(s-v.from.sat)*.01; v.to.sat+=(s-v.to.sat)*.01;
+}
+
+// Retourne true si le véhicule doit être retiré
+function updVeh(v,dt){
+  if (!drivable(v.occ) || gameMin-v.t0>600){endTrip(v,false);return true}
+  if (v.wait>0){
+    v.wait-=dt; if (v.wait>0) return false;
+    const np=route(v.path[v.seg],v.goal,v.vot,v.truck);
+    if (np && np.length>=2){v.path=np;v.seg=0;v.t=0;v.stuck=0}
+    else {v.stuck+=3; if (v.stuck>90){endTrip(v,false);return true} v.wait=3; return false}
+  }
+  let rem=dt;
+  for (let it=0; it<8 && rem>0; it++){
+    const a=v.path[v.seg], b=v.path[v.seg+1];
+    const occ=v.t<.5?a:b;
+    let s=spd[occ]; if (v.truck&&s>90) s=90;
+    if (s<=0) return false;
+    const rate=s/60, target=v.t<.5?.5:1, need=(target-v.t)/rate;
+    if (need>rem){v.t+=rate*rem;return false}
+    rem-=need; v.t=target;
+    if (target===.5){
+      if (spd[b]<=0){                                  // tronçon suivant bloqué : on cherche un détour
+        v.t=.499;
+        const np=route(a,v.goal,v.vot,v.truck);
+        if (np && np.length>=2 && np[1]!==b){v.path=np;v.seg=0;v.t=0}
+        else v.wait=2;
+        return false;
+      }
+      load[a]-=v.w; if (load[a]<0) load[a]=0; load[b]+=v.w; v.occ=b; onEnter(v,b);
+    } else {
+      v.seg++; v.t=0;
+      if (v.seg>=v.path.length-1){endTrip(v,true);return true}
+      if (--v.rr<=0){
+        v.rr=14+((Math.random()*10)|0);
+        if (rerouteBudget>0){rerouteBudget--;const np=route(v.path[v.seg],v.goal,v.vot,v.truck);if(np&&np.length>=2){v.path=np;v.seg=0}}
+        else v.rr=3;
+      }
+    }
+  }
+  return false;
+}
+
+function simStep(dt){
+  const prevDay=Math.floor(gameMin/1440);
+  gameMin+=dt; rerouteBudget=30;
+  // Chantiers
+  for (let k=worksList.length-1;k>=0;k--){
+    const i=worksList[k]; worksT[i]-=dt;
+    if (worksT[i]<=0){worksT[i]=0;road[i]=worksLvl[i];worksLvl[i]=0;worksList.splice(k,1);netDirty=mapDirty=true}
+  }
+  // Accidents
+  for (let k=accList.length-1;k>=0;k--){const i=accList[k];accident[i]-=dt;if(accident[i]<=0){accident[i]=0;accList.splice(k,1)}}
+  // Météo
+  if (gameMin>=weather.until) changeWeather();
+  if (netDirty){computeComps();netDirty=false}
+  updateSpeeds();
+  // Nouveaux trajets
+  const tod=todFactor(hour());
+  for (const c of cities){
+    if (!c.dest.length){c.acc=0;continue}
+    c.acc+=c.pop/1000*DEMAND*tod*dt/60;
+    while (c.acc>=1){c.acc-=1;if(vehicles.length<MAXV)spawn(c)}
+  }
+  // Déplacements
+  for (let k=vehicles.length-1;k>=0;k--){
+    if (updVeh(vehicles[k],dt)){vehicles[k]=vehicles[vehicles.length-1];vehicles.pop()}
+  }
+  const decay=Math.exp(-dt/60);
+  for (let i=0;i<N;i++){flow[i]*=decay;if(flash[i]>0)flash[i]=Math.max(0,flash[i]-dt*.5)}
+  if (Math.floor(gameMin/1440)!==prevDay) newDay();
+}
+
+function changeWeather(){
+  const r=Math.random(); const old=weather.t;
+  weather.t = r<.58?0 : r<.82?1 : r<.93?2 : 3;
+  weather.until = gameMin+120+Math.random()*420;
+  if (weather.t!==old && weather.t>0) toast(`Météo : ${WEATHER[weather.t].n.toLowerCase()}. Les vitesses baissent et les accidents sont plus fréquents.`,'warn');
+}
+
+function newDay(){
+  const d=dayNum()-1;
+  // Entretien
+  let m=0;
+  for (let i=0;i<N;i++){
+    const L=road[i];
+    if (L){let u=ROAD[L].upkeep;if(terrain[i]===2||terrain[i]===3)u*=2;m+=u}
+    if (toll[i]>0) m+=40;
+    if (radar[i]) m+=10;
+  }
+  spend(m,'maint');
+  // Impôts et croissance des villes
+  let tax=0;
+  for (const c of cities){
+    tax+=c.pop*.012*(.5+c.sat);
+    const n=c.dest.length;
+    let g;
+    if (n>0) g=.006+.003*Math.min(n,6)+(c.sat-.5)*.05;
+    else {g=c.pop>15000?-.003:.002; c.sat+=(.3-c.sat)*.3}
+    c.g=g; c.pop=clamp(c.pop*(1+g),500,400000); c.tripsDay=0;
+  }
+  earn(tax,'tax');
+  const inc=Object.values(today.inc).reduce((a,b)=>a+b,0), exp=Object.values(today.exp).reduce((a,b)=>a+b,0);
+  history.push({d,inc,exp,net:inc-exp,toll:today.inc.toll,maint:today.exp.maint});
+  if (history.length>30) history.shift();
+  toast(`Jour ${d} terminé : <b class="${inc-exp>=0?'pos':'neg'}">${inc-exp>=0?'+':''}${eur(inc-exp)}</b> · péages ${eur(today.inc.toll)} · entretien ${eur(m)}`,'gold');
+  today=freshToday();
+  if (cities.length<14 && Math.random()<.45) newVillage();
+  computeUrban(); netDirty=mapDirty=true;
+  if (money<-10000){endGame();return}
+  if (money<0) toast('Budget négatif. Installez des péages ou limitez les constructions, sinon c\'est la faillite sous −10 000 €.','bad');
+  save(true);
+}
+
+function newVillage(){
+  for (let t=0;t<400;t++){
+    const x=3+Math.floor(Math.random()*(W-6)), y=3+Math.floor(Math.random()*(H-6)), i=y*W+x;
+    if (terrain[i]===2||terrain[i]===3||urban[i]||road[i]) continue;
+    if (cities.some(c=>Math.hypot(c.x-x,c.y-y)<7)) continue;
+    const c=newCity(x,y,1200+Math.random()*1300,nextName(),true);
+    cities.push(c);
+    toast(`Un nouveau village est apparu : <b>${esc(c.name)}</b>. Reliez-le au réseau pour qu'il grandisse.`,'ok',i);
+    return;
+  }
+}
+
+// ================================================================ Objectifs
+function makeObjectives(){
+  const s=cities.slice().sort((a,b)=>b.pop-a.pop), P=totalPop();
+  const r=n=>Math.round(n/10000)*10000;
+  return [
+    {k:'link',a:s[0].id,b:s[1].id,text:`Relier ${s[0].name} à ${s[1].name}`,reward:4000},
+    {k:'trips',n:250,text:'Réaliser 250 trajets',reward:2500},
+    {k:'link',a:s[0].id,b:s[2].id,text:`Relier ${s[0].name} à ${s[2].name}`,reward:4000},
+    {k:'tollany',text:'Installer un péage',reward:2000},
+    {k:'comp',n:4,text:'Relier 4 villes dans un même réseau',reward:6000},
+    {k:'sat',n:.6,text:'Satisfaction moyenne de 60 %',reward:6000},
+    {k:'tollrev',n:5000,text:'Encaisser 5 000 € de péages',reward:5000},
+    {k:'hw',n:20,text:'Posséder 20 tronçons d\'autoroute',reward:8000},
+    {k:'pop',n:r(P*1.6),text:`Atteindre ${fmt(r(P*1.6))} habitants`,reward:10000},
+    {k:'all',text:'Relier toutes les villes de la région',reward:15000},
+    {k:'sat',n:.75,text:'Satisfaction moyenne de 75 %',reward:12000},
+    {k:'trips',n:20000,text:'Réaliser 20 000 trajets',reward:15000},
+    {k:'pop',n:r(P*3),text:`Atteindre ${fmt(r(P*3))} habitants`,reward:30000},
+  ].map(o=>({...o,done:false}));
+}
+const totalPop = () => cities.reduce((a,c)=>a+c.pop,0);
+const avgSat = () => {const p=totalPop();return p?cities.reduce((a,c)=>a+c.sat*c.pop,0)/p:0};
+function maxCompCities(){const m=new Map();let b=0;for(const c of cities)if(c.comp>=0){const v=(m.get(c.comp)||0)+1;m.set(c.comp,v);if(v>b)b=v}return Math.max(1,b)}
+function countLvl(L){let n=0;for(let i=0;i<N;i++)if(road[i]===L)n++;return n}
+function anyEquip(a){for(let i=0;i<N;i++)if(a[i])return true;return false}
+function objProgress(o){
+  switch(o.k){
+    case 'link':{const a=cities[o.a],b=cities[o.b];return a&&b&&a.comp>=0&&a.comp===b.comp?1:0}
+    case 'trips':return stats.totalTrips/o.n;
+    case 'tollany':return anyEquip(toll)?1:0;
+    case 'comp':return maxCompCities()/o.n;
+    case 'sat':return avgSat()/o.n;
+    case 'tollrev':return stats.tollTotal/o.n;
+    case 'hw':return countLvl(4)/o.n;
+    case 'pop':return totalPop()/o.n;
+    case 'all':return maxCompCities()/cities.length;
+  }
+  return 0;
+}
+const objDone = () => objectives.filter(o=>o.done).length;
+const unlocked = k => objDone() >= ({3:2,4:4,radar:1,tele:3}[k] ?? 0);
+function checkObjectives(){
+  const before={3:unlocked(3),4:unlocked(4),radar:unlocked('radar'),tele:unlocked('tele')};
+  let changed=false;
+  for (const o of objectives.filter(o=>!o.done).slice(0,3)){
+    if (objProgress(o)>=1){o.done=true;earn(o.reward,'bonus');changed=true;
+      toast(`Objectif atteint : <b>${esc(o.text)}</b> · +${eur(o.reward)}`,'gold');sfx.coin()}
+  }
+  if (!changed) return;
+  const lbl={3:'la Nationale',4:'l\'Autoroute',radar:'le Radar',tele:'le Télépéage'};
+  for (const k of Object.keys(before)) if (!before[k] && unlocked(k)) toast(`Débloqué : ${lbl[k]} est maintenant disponible.`,'ok');
+  buildTools(); renderObjectives(); lastSig='';
+}
+
+// ================================================================ Actions du joueur
+function commitRoad(tiles,L){
+  if (!unlocked(L)) return;
+  let cost=0; const todo=[];
+  for (const i of tiles){const c=buildCost(i,L);if(c>0){cost+=c;todo.push(i)}}
+  if (!todo.length){toast('Ce tracé est déjà à ce niveau ou au-dessus.');return}
+  if (cost>money){toast(`Fonds insuffisants : ce chantier coûte ${eur(cost)}.`,'bad');sfx.err();return}
+  spend(cost,'build');
+  let up=0;
+  for (const i of todo){
+    const cur=curLevel(i), was=worksT[i]>0;
+    if (cur) up++;
+    worksLvl[i]=L;
+    const dur=(cur?35:50)*(terrain[i]===2||terrain[i]===3?2:1)*(.8+L*.2);
+    worksT[i]=(was?worksT[i]:0)+dur; worksDur[i]=worksT[i];
+    if (!was) worksList.push(i);
+  }
+  mapDirty=true; sfx.build();
+  toast(`Chantier lancé : ${todo.length} tronçon${todo.length>1?'s':''} en ${ROAD[L].name.toLowerCase()}${up?` (dont ${up} amélioration${up>1?'s':''})`:''} pour ${eur(cost)}.`,'ok');
+}
+function commitBulldoze(tiles){
+  let refund=0,n=0;
+  for (const i of tiles){
+    if (!(road[i]||worksT[i]>0||toll[i]||radar[i])) continue;
+    if (road[i]) refund+=ROAD[road[i]].cost*TERR[terrain[i]].m*.25;
+    road[i]=0; worksT[i]=0; worksLvl[i]=0; toll[i]=0; tollTele[i]=0; radar[i]=0; equipRev[i]=0; n++;
+    if (accident[i]>0 && !urban[i]){accident[i]=0;accList=accList.filter(a=>a!==i)}
+  }
+  if (!n){toast('Rien à démolir ici. Les rues des villes ne se démolissent pas.');return}
+  worksList=worksList.filter(i=>worksT[i]>0);
+  earn(refund,'other'); updateRadarCover(); netDirty=mapDirty=true; sfx.build();
+  toast(`${n} tronçon${n>1?'s':''} démoli${n>1?'s':''}, ${eur(refund)} récupérés.`);
+}
+function placeEquip(i,kind){
+  if (kind==='toll' && toll[i]>0 || kind==='radar' && radar[i]){select(i);return}
+  if (!road[i] || urban[i]){toast(kind==='toll'?'Un péage se pose sur une route terminée, en dehors des villes.':'Un radar se pose sur une route terminée, en dehors des villes.','bad');sfx.err();return}
+  if (toll[i]>0 || radar[i]){toast('Ce tronçon est déjà équipé.','bad');sfx.err();return}
+  const cost=kind==='toll'?TOLL_COST:RADAR_COST;
+  if (money<cost){toast(`Fonds insuffisants : il faut ${eur(cost)}.`,'bad');sfx.err();return}
+  spend(cost,'build');
+  if (kind==='toll'){toll[i]=2;toast('Péage installé à 2 €. Réglez le tarif dans le panneau Sélection.','ok')}
+  else {radar[i]=1;updateRadarCover();toast('Radar installé : moins d\'accidents dans un rayon de 3 tronçons, et quelques amendes.','ok')}
+  equipRev[i]=0; sfx.build(); select(i);
+}
+function towAccident(i){
+  if (accident[i]<=0) return;
+  if (money<TOW_COST){toast(`Fonds insuffisants : la dépanneuse coûte ${eur(TOW_COST)}.`,'bad');return}
+  spend(TOW_COST,'other'); accident[i]=0; accList=accList.filter(a=>a!==i);
+  toast('La dépanneuse a dégagé la voie.','ok'); sfx.coin();
+}
+
+// ================================================================ Rendu
+const cv=$('#cv'), ctx=cv.getContext('2d');
+let dpr=1, VW=0, VH=0, terrCv=null, mapCv=null, lastMapRender=0, stripes=null;
+const miniCv=$('#mini'), mctx=miniCv.getContext('2d'); let miniBase=null;
+
+function resize(){
+  dpr=Math.min(2,window.devicePixelRatio||1); VW=innerWidth; VH=innerHeight;
+  cv.width=Math.round(VW*dpr); cv.height=Math.round(VH*dpr);
+  miniCv.width=216*dpr; miniCv.height=138*dpr;
+  document.documentElement.style.setProperty('--topH',($('#top').offsetHeight+16)+'px');
+  clampCam();
+}
+function clampCam(){
+  const vw=VW/cam.z, vh=VH/cam.z;
+  cam.x=clamp(cam.x,-vw/2,W*T-vw/2); cam.y=clamp(cam.y,-vh/2,H*T-vh/2);
+}
+function fitCam(){cam.z=clamp(Math.min(VW/(W*T),VH/(H*T))*1.1,.35,3.5);cam.x=W*T/2-VW/cam.z/2;cam.y=H*T/2-VH/cam.z/2;clampCam()}
+function centerOn(i,z){if(z)cam.z=z;cam.x=tx(i)*T+T/2-VW/cam.z/2;cam.y=ty(i)*T+T/2-VH/cam.z/2;clampCam()}
+
+function rrect(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
+
+function renderTerrain(){
+  terrCv=document.createElement('canvas'); terrCv.width=W*T*RES; terrCv.height=H*T*RES;
+  const g=terrCv.getContext('2d'); g.scale(RES,RES);
+  const GR=['#dce7c3','#d8e4be','#e0eac8'];
+  for (let i=0;i<N;i++){
+    const x=tx(i)*T, y=ty(i)*T, t=terrain[i], d=deco[i];
+    if (t===0){
+      g.fillStyle=GR[(d*3)|0]; g.fillRect(x,y,T,T);
+      if (hsh(i,1)<.16){g.fillStyle=hsh(i,2)<.5?'#e7eabd':'#d0e0ad';const w=8+hsh(i,3)*10,h=6+hsh(i,4)*10;g.fillRect(x+hsh(i,5)*(T-w),y+hsh(i,6)*(T-h),w,h)}
+    } else if (t===1){
+      g.fillStyle='#c6dcab'; g.fillRect(x,y,T,T);
+      for (let k=0;k<4;k++){
+        const px=x+4+hsh(i,10+k)*(T-8), py=y+4+hsh(i,20+k)*(T-8), r=3.2+hsh(i,30+k)*2.2;
+        g.fillStyle='#7ea85f'; g.beginPath(); g.arc(px+1,py+1.2,r,0,7); g.fill();
+        g.fillStyle=k%2?'#96be77':'#8ab56c'; g.beginPath(); g.arc(px,py,r,0,7); g.fill();
+      }
+    } else if (t===2){
+      g.fillStyle='#a5c9e2'; g.fillRect(x,y,T,T);
+      if (hsh(i,7)<.45){g.strokeStyle='#bcd8ec';g.lineWidth=1;g.beginPath();const px=x+4+hsh(i,8)*10,py=y+6+hsh(i,9)*12;g.moveTo(px,py);g.quadraticCurveTo(px+3,py-2,px+6,py);g.stroke()}
+    } else if (t===3){
+      g.fillStyle='#ddd2bf'; g.fillRect(x,y,T,T);
+      const top=y+3+d*5, mx=x+T/2+(hsh(i,11)-.5)*4;
+      g.fillStyle='#c4b293'; g.beginPath(); g.moveTo(x+2,y+T-2); g.lineTo(mx,top); g.lineTo(mx,y+T-2); g.fill();
+      g.fillStyle='#a8957a'; g.beginPath(); g.moveTo(mx,top); g.lineTo(x+T-2,y+T-2); g.lineTo(mx,y+T-2); g.fill();
+      if (hsh(i,12)<.55){g.fillStyle='#f6f3ec';g.beginPath();g.moveTo(mx,top);g.lineTo(mx-3.2,top+4.5);g.lineTo(mx+3.2,top+4.5);g.fill()}
+    } else {g.fillStyle='#eee3c0';g.fillRect(x,y,T,T)}
+  }
+  // Traits de berge
+  g.strokeStyle='#86b0cf'; g.lineWidth=1.2;
+  for (let i=0;i<N;i++){
+    if (terrain[i]!==2) continue;
+    const x=tx(i)*T, y=ty(i)*T;
+    for (const [dx,dy] of DIRS){
+      const nx=tx(i)+dx, ny=ty(i)+dy; if(nx<0||ny<0||nx>=W||ny>=H) continue;
+      if (terrain[ny*W+nx]===2) continue;
+      g.beginPath();
+      if (dx===1){g.moveTo(x+T-.6,y);g.lineTo(x+T-.6,y+T)} else if (dx===-1){g.moveTo(x+.6,y);g.lineTo(x+.6,y+T)}
+      else if (dy===1){g.moveTo(x,y+T-.6);g.lineTo(x+T,y+T-.6)} else {g.moveTo(x,y+.6);g.lineTo(x+T,y+.6)}
+      g.stroke();
+    }
+  }
+}
+
+function renderMap(){
+  mapDirty=false; miniDirty=true; lastMapRender=performance.now();
+  if (!mapCv){mapCv=document.createElement('canvas');mapCv.width=W*T*RES;mapCv.height=H*T*RES}
+  const g=mapCv.getContext('2d');
+  g.setTransform(1,0,0,1,0,0); g.drawImage(terrCv,0,0); g.setTransform(RES,0,0,RES,0,0);
+  // Quartiers
+  for (let i=0;i<N;i++){
+    if (!urban[i]) continue;
+    const x=tx(i)*T, y=ty(i)*T, c=cities[urban[i]-1];
+    const dc=Math.hypot(tx(i)-c.x,ty(i)-c.y), dense=c.pop>12000&&dc<2.2;
+    g.fillStyle='#ebe6dc'; g.fillRect(x,y,T,T);
+    for (let q=0;q<4;q++){
+      const qx=x+(q&1?T/2+2.6:1.6), qy=y+(q&2?T/2+2.6:1.6), sz=T/2-4.2;
+      const k=hsh(i,40+q);
+      if (k<.12 && !dense){g.fillStyle='#cfe0b4';g.fillRect(qx,qy,sz,sz);continue}
+      const bw=sz*(.55+hsh(i,50+q)*.45), bh=sz*(.55+hsh(i,60+q)*.45);
+      g.fillStyle=dense?(k<.5?'#b5a893':'#a99c87'):(k<.5?'#d3c8b6':'#c9bca8');
+      g.fillRect(qx+(sz-bw)*hsh(i,70+q),qy+(sz-bh)*hsh(i,80+q),bw,bh);
+    }
+  }
+  // Tronçons : on trace des demi-segments du centre vers chaque voisin relié
+  const segs=[[],[],[],[],[]];
+  for (let i=0;i<N;i++){
+    if (!drivable(i)) continue;
+    const st=road[i]||0, cx=tx(i)*T+T/2, cy=ty(i)*T+T/2;
+    segs[st].push(cx,cy,cx,cy);
+    for (const [dx,dy] of DIRS){
+      const nx=tx(i)+dx, ny=ty(i)+dy; if(nx<0||ny<0||nx>=W||ny>=H) continue;
+      const n=ny*W+nx; if (!drivable(n)) continue;
+      // Une route qui traverse une ville ne se ramifie pas vers chaque rue : la rue garde son style
+      const s2=st&&(road[n]||!urban[i])?st:0;
+      segs[s2].push(cx,cy,cx+dx*T/2,cy+dy*T/2);
+    }
+  }
+  const path=(arr,filter)=>{g.beginPath();for(let k=0;k<arr.length;k+=4){if(filter&&!filter(arr[k],arr[k+1]))continue;g.moveTo(arr[k],arr[k+1]);g.lineTo(arr[k+2],arr[k+3])}};
+  const tileOf=(x,y)=>Math.floor(y/T)*W+Math.floor(x/T);
+  g.lineCap='round'; g.lineJoin='round';
+  // Ponts : tablier clair bordé
+  for (let L=1;L<=4;L++){
+    const f=(x,y)=>terrain[tileOf(x,y)]===2;
+    path(segs[L],f); g.strokeStyle='#5c6068'; g.lineWidth=ROAD[L].cw+5; g.stroke();
+    g.strokeStyle='#ecebe6'; g.lineWidth=ROAD[L].cw+3; g.stroke();
+  }
+  for (let s=0;s<=4;s++){const S=s?ROAD[s]:STREET;path(segs[s]);g.strokeStyle=S.casing;g.lineWidth=S.cw;g.stroke()}
+  for (let s=0;s<=4;s++){const S=s?ROAD[s]:STREET;path(segs[s]);g.strokeStyle=S.fill;g.lineWidth=S.w;g.stroke()}
+  // Marquages
+  g.lineCap='butt';
+  g.setLineDash([3,3]); g.strokeStyle='rgba(255,255,255,.85)'; g.lineWidth=.8;
+  g.beginPath(); for(let k=0;k<segs[3].length;k+=4){const a=segs[3];if(a[k]===a[k+2]&&a[k+1]===a[k+3])continue;g.moveTo(a[k],a[k+1]);g.lineTo(a[k+2],a[k+3])} g.stroke();
+  g.beginPath(); for(let k=0;k<segs[4].length;k+=4){const a=segs[4];if(a[k]===a[k+2]&&a[k+1]===a[k+3])continue;
+    const nx=-(a[k+3]-a[k+1])/(T/2), ny=(a[k+2]-a[k])/(T/2);
+    for (const o of [-2.6,2.6]){g.moveTo(a[k]+nx*o,a[k+1]+ny*o);g.lineTo(a[k+2]+nx*o,a[k+3]+ny*o)}} g.stroke();
+  g.setLineDash([]); g.strokeStyle='#163c80'; g.lineWidth=1.3;
+  g.beginPath(); for(let k=0;k<segs[4].length;k+=4){const a=segs[4];if(a[k]===a[k+2]&&a[k+1]===a[k+3])continue;g.moveTo(a[k],a[k+1]);g.lineTo(a[k+2],a[k+3])} g.stroke();
+  // Tunnels : la montagne recouvre la route en pointillés
+  g.setLineDash([2.5,2.5]); g.strokeStyle='rgba(205,190,165,.75)';
+  for (let L=1;L<=4;L++){path(segs[L],(x,y)=>terrain[tileOf(x,y)]===3);g.lineWidth=ROAD[L].w+.5;g.stroke()}
+  g.setLineDash([]); g.lineCap='round';
+}
+
+function renderMini(){
+  miniDirty=false;
+  if (!miniBase){miniBase=document.createElement('canvas');miniBase.width=W*3;miniBase.height=H*3}
+  const g=miniBase.getContext('2d');
+  const TC=['#d6e3bb','#a9c98c','#8fb9d9','#c1b092','#eadfb9'], RC=[null,'#f4ecd8','#e8b923','#d0392d','#2c63c4'];
+  for (let i=0;i<N;i++){
+    g.fillStyle=road[i]?RC[road[i]]:urban[i]?'#9e9282':TC[terrain[i]];
+    g.fillRect(tx(i)*3,ty(i)*3,3,3);
+  }
+}
+function drawMini(){
+  if (miniDirty && !mapDirty) renderMini();
+  if (!miniBase) return;
+  mctx.setTransform(dpr,0,0,dpr,0,0); mctx.imageSmoothingEnabled=false;
+  mctx.drawImage(miniBase,0,0,216,138);
+  for (const i of accList){mctx.fillStyle='#ee5a5a';mctx.fillRect(tx(i)*3-1,ty(i)*3-1,5,5)}
+  const s=3/T;
+  mctx.strokeStyle='#ffffff'; mctx.lineWidth=1.5;
+  mctx.strokeRect(cam.x*s,cam.y*s,VW/cam.z*s,VH/cam.z*s);
+}
+
+const drops=[];
+for (let k=0;k<180;k++) drops.push({x:Math.random(),y:Math.random(),s:.6+Math.random()*.6});
+function darkness(h){if(h<5||h>=21)return .58;if(h<7)return .58*(7-h)/2;if(h>=19)return .58*(h-19)/2;return 0}
+
+function draw(rdt,now){
+  const z=cam.z;
+  ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='#0d1322'; ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.setTransform(dpr*z,0,0,dpr*z,-cam.x*dpr*z,-cam.y*dpr*z);
+  ctx.imageSmoothingEnabled=true;
+  ctx.drawImage(mapCv,0,0,W*T,H*T);
+  const x0=Math.max(0,Math.floor(cam.x/T)), x1=Math.min(W-1,Math.floor((cam.x+VW/z)/T));
+  const y0=Math.max(0,Math.floor(cam.y/T)), y1=Math.min(H-1,Math.floor((cam.y+VH/z)/T));
+
+  // Chantiers
+  if (!stripes){const p=document.createElement('canvas');p.width=p.height=8;const g=p.getContext('2d');g.fillStyle='#fff3e0';g.fillRect(0,0,8,8);g.strokeStyle='#f2a33a';g.lineWidth=3;g.beginPath();g.moveTo(-2,10);g.lineTo(10,-2);g.moveTo(6,10);g.lineTo(10,6);g.moveTo(-2,2);g.lineTo(2,-2);g.stroke();stripes=ctx.createPattern(p,'repeat')}
+  for (const i of worksList){
+    const x=tx(i)*T, y=ty(i)*T; if (tx(i)<x0||tx(i)>x1||ty(i)<y0||ty(i)>y1) continue;
+    ctx.globalAlpha=road[i]?.55:.9; ctx.fillStyle=stripes; ctx.fillRect(x+3,y+3,T-6,T-6); ctx.globalAlpha=1;
+    ctx.strokeStyle='#c46d10'; ctx.lineWidth=1; ctx.strokeRect(x+3,y+3,T-6,T-6);
+    const p=1-worksT[i]/(worksDur[i]||1);
+    ctx.fillStyle='#1d2538'; ctx.fillRect(x+4,y+T-7,T-8,3); ctx.fillStyle=ROAD[worksLvl[i]].fill; ctx.fillRect(x+4,y+T-7,(T-8)*p,3);
+  }
+  // Carte du trafic
+  if (heat){
+    ctx.fillStyle='rgba(12,18,34,.38)'; ctx.fillRect(0,0,W*T,H*T);
+    for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++){
+      const i=y*W+x; if (!drivable(i)) continue;
+      const r=load[i]/(capA[i]||1);
+      ctx.fillStyle=accident[i]>0?'#ee5a5a':r<.4?'rgba(69,192,138,.75)':r<.8?'rgba(245,207,79,.85)':r<1.3?'rgba(242,140,40,.9)':'rgba(230,60,60,.95)';
+      ctx.fillRect(x*T+5,y*T+5,T-10,T-10);
+    }
+  }
+  // Véhicules
+  const dark=darkness(hour()), lights=dark>.05?[]:null, small=z<.6;
+  for (const v of vehicles){
+    const a=v.path[v.seg], b=v.path[v.seg+1]; if (b===undefined) continue;
+    const ax=tx(a)*T+T/2, ay=ty(a)*T+T/2, bx=tx(b)*T+T/2, by=ty(b)*T+T/2;
+    const px=ax+(bx-ax)*v.t, py=ay+(by-ay)*v.t;
+    if (px<cam.x-10||py<cam.y-10||px>cam.x+VW/z+10||py>cam.y+VH/z+10) continue;
+    const dx=Math.sign(bx-ax), dy=Math.sign(by-ay), L=road[v.occ], S=L?ROAD[L]:STREET;
+    const lane=S.lanes[Math.min(v.lane,S.lanes.length-1)], ox=-dy*lane, oy=dx*lane;
+    const len=v.truck?6.6:4.2, wid=v.truck?2.7:2.3, cx=px+ox, cy=py+oy;
+    if (small){ctx.fillStyle=v.col;ctx.fillRect(cx-1.4,cy-1.4,2.8,2.8)}
+    else if (dx!==0){
+      ctx.fillStyle=v.col; ctx.fillRect(cx-len/2,cy-wid/2,len,wid);
+      if (v.truck){ctx.fillStyle=v.cab;ctx.fillRect(dx>0?cx+len/2-1.8:cx-len/2,cy-wid/2,1.8,wid)}
+      else {ctx.fillStyle='rgba(20,30,50,.55)';ctx.fillRect(dx>0?cx+.4:cx-1.4,cy-wid/2+.4,1,wid-.8)}
+    } else {
+      ctx.fillStyle=v.col; ctx.fillRect(cx-wid/2,cy-len/2,wid,len);
+      if (v.truck){ctx.fillStyle=v.cab;ctx.fillRect(cx-wid/2,dy>0?cy+len/2-1.8:cy-len/2,wid,1.8)}
+      else {ctx.fillStyle='rgba(20,30,50,.55)';ctx.fillRect(cx-wid/2+.4,dy>0?cy+.4:cy-1.4,wid-.8,1)}
+    }
+    if (lights) lights.push(cx+dx*len/2,cy+dy*len/2);
+  }
+  // Péages, radars
+  for (let y=y0;y<=y1;y++) for (let x=x0;x<=x1;x++){
+    const i=y*W+x, cx=x*T+T/2, cy=y*T+T/2;
+    if (toll[i]>0){
+      ctx.fillStyle='#1d2538'; rrect(ctx,cx-8,cy-5.5,16,11,2.5); ctx.fill();
+      ctx.strokeStyle='#f5cf4f'; ctx.lineWidth=1; ctx.stroke();
+      ctx.fillStyle='#f5cf4f'; ctx.font='700 8px Barlow, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('€',cx,cy+.5);
+      if (tollTele[i]){ctx.fillStyle='#2f6fd6';ctx.beginPath();ctx.arc(cx+8,cy-5.5,3,0,7);ctx.fill()}
+    } else if (radar[i]){
+      ctx.fillStyle='#39404c'; rrect(ctx,cx+3,cy-9,6,8,1.5); ctx.fill();
+      ctx.fillStyle=flash[i]>0?'#ffffff':'#9fd3ff'; ctx.beginPath(); ctx.arc(cx+6,cy-6,1.6,0,7); ctx.fill();
+      if (flash[i]>0){ctx.fillStyle=`rgba(255,255,255,${flash[i]*.5})`;ctx.beginPath();ctx.arc(cx+6,cy-6,7*flash[i]+2,0,7);ctx.fill()}
+    }
+  }
+  // Accidents
+  const pulse=.5+.5*Math.sin(now/180);
+  for (const i of accList){
+    const cx=tx(i)*T+T/2, cy=ty(i)*T+T/2;
+    ctx.fillStyle=`rgba(238,90,90,${.25+pulse*.25})`; ctx.beginPath(); ctx.arc(cx,cy,10+pulse*4,0,7); ctx.fill();
+    ctx.fillStyle='#f5cf4f'; ctx.strokeStyle='#b3261e'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(cx,cy-7); ctx.lineTo(cx+7,cy+5); ctx.lineTo(cx-7,cy+5); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#1a1a1a'; ctx.font='700 8px Barlow, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('!',cx,cy+1);
+  }
+  // Aperçu du tracé
+  if (preview){
+    for (const i of preview.tiles){
+      const x=tx(i)*T, y=ty(i)*T;
+      if (preview.kind==='bull') ctx.fillStyle=(road[i]||worksT[i]>0||toll[i]||radar[i])?'rgba(238,90,90,.5)':'rgba(255,255,255,.15)';
+      else {const c=buildCost(i,preview.lvl);ctx.fillStyle=c===0?'rgba(255,255,255,.18)':preview.ok?'rgba(69,192,138,.5)':'rgba(238,90,90,.5)'}
+      ctx.fillRect(x+1,y+1,T-2,T-2);
+    }
+  }
+  // Survol et sélection
+  if (hover>=0 && !drag && tool!=='pan'){ctx.strokeStyle='rgba(255,255,255,.85)';ctx.lineWidth=1.2/z+.4;ctx.strokeRect(tx(hover)*T+.5,ty(hover)*T+.5,T-1,T-1)}
+  if (sel>=0){ctx.strokeStyle='#f5cf4f';ctx.lineWidth=2;ctx.setLineDash([4,3]);ctx.lineDashOffset=-now/60;ctx.strokeRect(tx(sel)*T+1,ty(sel)*T+1,T-2,T-2);ctx.setLineDash([])}
+
+  // ---- Espace écran : nuit, météo, étiquettes
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const sx=wx=>(wx-cam.x)*z, sy=wy=>(wy-cam.y)*z;
+  if (dark>0){
+    ctx.fillStyle=`rgba(8,14,40,${dark})`; ctx.fillRect(0,0,VW,VH);
+    ctx.globalCompositeOperation='lighter';
+    for (const c of cities){
+      const R=(cityRadius(c)+1.5)*T*z, X=sx(c.x*T+T/2), Y=sy(c.y*T+T/2);
+      if (X<-R||Y<-R||X>VW+R||Y>VH+R) continue;
+      const gr=ctx.createRadialGradient(X,Y,0,X,Y,R);
+      gr.addColorStop(0,`rgba(255,196,110,${.42*dark/.58})`); gr.addColorStop(1,'rgba(255,196,110,0)');
+      ctx.fillStyle=gr; ctx.fillRect(X-R,Y-R,R*2,R*2);
+    }
+    if (lights){ctx.fillStyle=`rgba(255,238,180,${.9*dark/.58})`;const r=Math.max(1,1.3*z);for(let k=0;k<lights.length;k+=2){ctx.beginPath();ctx.arc(sx(lights[k]),sy(lights[k+1]),r,0,7);ctx.fill()}}
+    ctx.globalCompositeOperation='source-over';
+  }
+  const wt=weather.t;
+  if (wt===1||wt===3){
+    if (wt===1){ctx.fillStyle='rgba(30,42,66,.14)';ctx.fillRect(0,0,VW,VH)}
+    ctx.strokeStyle=wt===1?'rgba(205,220,240,.45)':'rgba(255,255,255,.85)'; ctx.fillStyle='rgba(255,255,255,.9)'; ctx.lineWidth=1;
+    ctx.beginPath();
+    for (const d of drops){
+      if (!paused){d.y+=rdt*d.s*(wt===1?1.6:.18);d.x+=rdt*(wt===1?.12:.03*Math.sin(now/900+d.s*9));if(d.y>1){d.y-=1;d.x=Math.random()}if(d.x>1)d.x-=1;if(d.x<0)d.x+=1}
+      const X=d.x*VW, Y=d.y*VH;
+      if (wt===1){ctx.moveTo(X,Y);ctx.lineTo(X-2,Y-11)} else {ctx.moveTo(X+1.6,Y);ctx.arc(X,Y,1.6,0,7)}
+    }
+    if (wt===1) ctx.stroke(); else ctx.fill();
+  } else if (wt===2){ctx.fillStyle='rgba(228,233,240,.34)';ctx.fillRect(0,0,VW,VH)}
+  // Étiquettes des villes
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  for (const c of cities){
+    const X=sx(c.x*T+T/2), Y=sy(c.y*T+T/2)-Math.max(16,(cityRadius(c)*T*z)*.55);
+    if (X<-120||Y<-40||X>VW+120||Y>VH+40) continue;
+    const big=!c.village&&c.pop>8000;
+    ctx.font=`700 ${big?15:13}px "Barlow Condensed", "Arial Narrow", sans-serif`;
+    const nm=c.name.toUpperCase(), w1=ctx.measureText(nm).width;
+    ctx.font='600 11px Barlow, system-ui, sans-serif';
+    const ps=fmt(c.pop), w2=ctx.measureText(ps).width, w=w1+w2+28, h=big?22:19;
+    ctx.fillStyle='rgba(17,24,39,.86)'; rrect(ctx,X-w/2,Y-h/2,w,h,4); ctx.fill();
+    ctx.fillStyle=c.comp>=0&&c.dest.length?(c.sat<.4?'#ee5a5a':c.sat<.6?'#f2a33a':'#45c08a'):'#6b7590';
+    ctx.beginPath(); ctx.arc(X-w/2+9,Y,3.5,0,7); ctx.fill();
+    ctx.fillStyle='#eef2f8'; ctx.font=`700 ${big?15:13}px "Barlow Condensed", "Arial Narrow", sans-serif`; ctx.fillText(nm,X-w/2+17,Y+.5);
+    ctx.fillStyle='#98a4c0'; ctx.font='600 11px Barlow, system-ui, sans-serif'; ctx.fillText(ps,X-w/2+21+w1,Y+.5);
+  }
+}
+
+// ================================================================ Interface
+const toastsEl=$('#toasts');
+function toast(html,kind='',tile=-1){
+  const el=document.createElement('div'); el.className='toast '+kind+(tile>=0?' click':''); el.innerHTML=html;
+  if (tile>=0) el.onclick=()=>{centerOn(tile,Math.max(cam.z,1.6));select(tile)};
+  toastsEl.prepend(el);
+  while (toastsEl.children.length>5) toastsEl.lastChild.remove();
+  setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),320)},6500);
+}
+
+const TOOLS=[
+  {id:'inspect',nm:'Inspecter',key:'I',icon:'<svg width="20" height="20" viewBox="0 0 20 20"><path d="M4 2l11 7-5 1.2L13 17l-2 1-3-6.6L4 14z" fill="#eef2f8"/></svg>',ct:'Infos, réglages'},
+  {id:'pan',nm:'Déplacer',key:'M',icon:'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#eef2f8" stroke-width="1.7" stroke-linecap="round"><path d="M10 2v16M2 10h16M10 2l-2.5 2.5M10 2l2.5 2.5M10 18l-2.5-2.5M10 18l2.5-2.5M2 10l2.5-2.5M2 10l2.5 2.5M18 10l-2.5-2.5M18 10l-2.5 2.5"/></svg>',ct:'Glisser la carte'},
+  {group:'Routes'},
+  {id:'r1',lvl:1,key:'1'},{id:'r2',lvl:2,key:'2'},{id:'r3',lvl:3,key:'3'},{id:'r4',lvl:4,key:'4'},
+  {group:'Équipements'},
+  {id:'toll',nm:'Péage',key:'T',icon:'<svg width="22" height="16" viewBox="0 0 22 16"><rect x="1" y="2" width="20" height="12" rx="2.5" fill="#1d2538" stroke="#f5cf4f"/><text x="11" y="11.5" font-size="9" font-weight="700" fill="#f5cf4f" text-anchor="middle" font-family="Barlow,sans-serif">€</text></svg>',ct:eur(TOLL_COST)},
+  {id:'radar',nm:'Radar',key:'R',lock:'radar',icon:'<svg width="16" height="20" viewBox="0 0 16 20"><rect x="3" y="1" width="10" height="12" rx="2" fill="#4a525f"/><circle cx="8" cy="6" r="2.6" fill="#9fd3ff"/><rect x="7" y="13" width="2" height="6" fill="#4a525f"/></svg>',ct:eur(RADAR_COST)},
+  {id:'bull',nm:'Démolir',key:'B',icon:'<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#ee5a5a" stroke-width="2.2" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>',ct:'25 % remboursés'},
+];
+function lockText(k){return {3:'2 objectifs',4:'4 objectifs',radar:'1 objectif'}[k]}
+function buildTools(){
+  const el=$('#tools'); el.innerHTML='';
+  for (const t of TOOLS){
+    if (t.group){const h=document.createElement('h3');h.textContent=t.group;el.appendChild(h);continue}
+    const b=document.createElement('button'); b.className='tool'; b.dataset.tool=t.id;
+    let nm=t.nm, ct=t.ct, icon=t.icon, lk=t.lock;
+    if (t.lvl){const R=ROAD[t.lvl];nm=R.name;ct=`${eur(R.cost)} · ${R.speed} km/h`;icon=`<i></i>`;lk=t.lvl>=3?t.lvl:null}
+    const locked=lk!=null && !unlocked(lk);
+    if (locked){b.classList.add('locked');ct='Après '+lockText(lk)}
+    b.innerHTML=`<span class="sw ${t.lvl?'l'+t.lvl:''}" style="${t.lvl?'':'background:var(--panel-2)'}">${icon}</span><span><span class="nm">${nm}</span><span class="ct">${ct}</span></span><kbd>${t.key}</kbd>`;
+    b.title=locked?`${nm} : se débloque après ${lockText(lk)}`:`${nm} (${t.key})`;
+    b.onclick=()=>setTool(t.id);
+    if (t.id===tool) b.classList.add('on');
+    el.appendChild(b);
+  }
+}
+function toolLevel(id){return id&&id[0]==='r'&&id.length===2?+id[1]:0}
+function setTool(id){
+  const L=toolLevel(id);
+  if (L>=3 && !unlocked(L)){toast(`${ROAD[L].name} : se débloque après ${lockText(L)}.`,'warn');sfx.err();return}
+  if (id==='radar' && !unlocked('radar')){toast('Radar : se débloque après 1 objectif.','warn');sfx.err();return}
+  tool=id; drag=null; preview=null; $('#tip').hidden=true;
+  document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('on',b.dataset.tool===id));
+  cv.style.cursor=id==='pan'?'grab':id==='inspect'?'default':'crosshair';
+}
+
+// Onglets
+let curTab='sel';
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+function showTab(t){
+  curTab=t;
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  for (const k of ['sel','obj','city','fin']) $('#tab-'+k).hidden=k!==t;
+  $('#side').classList.remove('closed');
+  refreshTabs(true);
+}
+
+// Panneau Sélection : reconstruit quand la nature de la sélection change, sinon on met à jour les valeurs
+let lastSig='';
+function selSig(i){
+  if (i<0) return 'none';
+  if (accident[i]>0) return 'acc';
+  if (toll[i]>0) return 'toll'+tollTele[i]+unlocked('tele');
+  if (radar[i]) return 'radar';
+  if (road[i]||worksT[i]>0) return 'road'+road[i]+'-'+(worksT[i]>0?worksLvl[i]:0)+'-'+objDone();
+  if (urban[i]) return 'city'+urban[i];
+  return 'terr'+objDone();
+}
+function select(i){sel=i;lastSig='';if(i>=0)showTab('sel');else renderSel()}
+function roadName(i){const L=road[i];return L?ROAD[L].name:urban[i]?'Rue':'—'}
+function fieldVals(i){
+  const L=road[i], c=urban[i]?cities[urban[i]-1]:null;
+  const f={
+    speed:spd[i]>0?Math.round(spd[i])+' km/h':'bloqué',
+    load:fmt(load[i])+' / '+fmt(capA[i]),
+    flow:fmt(flow[i])+' véh/h',
+    works:worksT[i]>0?Math.ceil(worksT[i])+' min':'',
+    rev:eur(equipRev[i]),
+    acc:Math.ceil(accident[i])+' min',
+  };
+  if (c){f.pop=fmt(c.pop);f.sat=pct(c.sat);f.g=(c.g>=0?'+':'')+(c.g*100).toFixed(1)+' %/jour';f.links=c.dest.length;f.trips=fmt(c.tripsDay)}
+  return f;
+}
+function cityBlock(c){
+  return `<h4>${esc(c.name)}</h4><dl class="kv"><dt>Habitants</dt><dd data-f="pop"></dd><dt>Satisfaction</dt><dd data-f="sat"></dd><dt>Croissance</dt><dd data-f="g"></dd><dt>Villes accessibles</dt><dd data-f="links"></dd><dt>Départs aujourd'hui</dt><dd data-f="trips"></dd></dl>
+  ${c.dest.length?'':'<p class="hint" style="margin-top:8px">Ville isolée : aucune route ne la relie à une autre ville. Elle ne grandit pas et sa satisfaction baisse.</p>'}`;
+}
+function renderSel(){
+  const el=$('#tab-sel'), i=sel, sig=selSig(i);
+  if (sig===lastSig){
+    if (i>=0){const f=fieldVals(i);el.querySelectorAll('[data-f]').forEach(s=>{const v=f[s.dataset.f];if(v!==undefined&&s.textContent!==String(v))s.textContent=v})}
+    return;
+  }
+  lastSig=sig;
+  if (i<0){el.innerHTML=`<h2>Rien de sélectionné</h2><p class="hint">Avec l'outil <b>Inspecter</b> (touche I), cliquez sur une route, une ville, un péage ou un accident pour voir ses détails et le régler.</p>
+    <h4>Pour bien démarrer</h4><p class="hint">Choisissez <b>Route</b> (touche 2) puis cliquez-glissez d'une ville vers une autre. Le tracé le moins cher s'affiche en vert ; relâchez pour lancer le chantier.</p>`;return}
+  const L=road[i], terr=TERR[terrain[i]].n, c=urban[i]?cities[urban[i]-1]:null;
+  const where=terrain[i]===2&&L?'Pont':terrain[i]===3&&L?'Tunnel':terr;
+  let h='';
+  if (sig==='acc'){
+    h=`<h2>Accident</h2><div class="sub">${esc(roadName(i))} · voie bloquée</div>
+      <dl class="kv"><dt>Dégagement prévu dans</dt><dd data-f="acc"></dd></dl>
+      <p class="hint" style="margin-top:10px">Les conducteurs cherchent un détour. Sans autre itinéraire, ils attendent.</p>
+      <div class="actions"><button class="btn primary" id="aTow">Envoyer une dépanneuse · ${eur(TOW_COST)}</button></div>`;
+  } else if (sig.startsWith('toll')){
+    h=`<h2>Péage</h2><div class="sub">${esc(roadName(i))} · ${where}</div>
+      <h4>Tarif voiture <span class="pill" id="tPrice">${toll[i].toFixed(1).replace('.',',')} €</span></h4>
+      <input class="range" type="range" id="tRange" min="0.5" max="15" step="0.5" value="${toll[i]}" aria-label="Tarif du péage">
+      <p class="hint" style="font-size:12.5px">Les camions paient 2,5 fois plus. Un tarif élevé rapporte plus par passage mais fait fuir les conducteurs pressés vers d'autres routes et baisse la satisfaction.</p>
+      <dl class="kv" style="margin-top:10px"><dt>Passages</dt><dd data-f="flow"></dd><dt>Vitesse au péage</dt><dd data-f="speed"></dd><dt>Recettes totales</dt><dd data-f="rev"></dd><dt>Entretien</dt><dd>40 €/jour</dd></dl>
+      <div class="actions">
+        ${tollTele[i]?'<div class="pill" style="text-align:center">Télépéage installé : passage à 70 km/h</div>':
+          unlocked('tele')?`<button class="btn primary" id="aTele">Installer le télépéage · ${eur(TELE_COST)}</button>`:'<div class="hint" style="font-size:12.5px">Télépéage : se débloque après 3 objectifs. Il supprime le ralentissement à 25 km/h.</div>'}
+        <button class="btn danger" id="aRemove">Retirer le péage</button>
+      </div>`;
+  } else if (sig==='radar'){
+    h=`<h2>Radar</h2><div class="sub">${esc(roadName(i))} · ${where}</div>
+      <dl class="kv"><dt>Amendes encaissées</dt><dd data-f="rev"></dd><dt>Passages</dt><dd data-f="flow"></dd><dt>Entretien</dt><dd>10 €/jour</dd></dl>
+      <p class="hint" style="margin-top:10px">Réduit de 55 % le risque d'accident dans un rayon de 3 tronçons.</p>
+      <div class="actions"><button class="btn danger" id="aRemove">Retirer le radar</button></div>`;
+  } else if (sig.startsWith('road')){
+    const tgt=worksT[i]>0?worksLvl[i]:0, next=Math.max(L,tgt)+1;
+    h=`<h2>${L?ROAD[L].name:'Chantier'}</h2><div class="sub">${where}${c?' · '+esc(c.name):''}</div>
+      <dl class="kv">${L?`<dt>Limite</dt><dd>${ROAD[L].speed} km/h</dd><dt>Vitesse actuelle</dt><dd data-f="speed"></dd><dt>Charge / capacité</dt><dd data-f="load"></dd><dt>Débit</dt><dd data-f="flow"></dd><dt>Entretien</dt><dd>${eur(ROAD[L].upkeep*(terrain[i]===2||terrain[i]===3?2:1))}/jour</dd>`:''}
+      ${tgt?`<dt>Travaux vers ${ROAD[tgt].name}</dt><dd data-f="works"></dd>`:''}</dl>
+      <div class="actions">
+        ${next<=4?(unlocked(next)?`<button class="btn primary" id="aUp">Passer en ${ROAD[next].name} · ${eur(buildCost(i,next))}</button>`:`<div class="hint" style="font-size:12.5px">${ROAD[next].name} : se débloque après ${lockText(next)}.</div>`):''}
+        <button class="btn danger" id="aBull">Démolir ce tronçon</button>
+      </div>${c?cityBlock(c):''}`;
+  } else if (sig.startsWith('city')){
+    h=`<h2>${esc(c.name)}</h2><div class="sub">${c.village?'Village':'Ville'} · rues à 35 km/h</div>${cityBlock(c).replace(/^<h4>.*?<\/h4>/,'')}
+      <dl class="kv" style="margin-top:8px"><dt>Charge de la rue</dt><dd data-f="load"></dd><dt>Vitesse actuelle</dt><dd data-f="speed"></dd></dl>
+      <p class="hint" style="margin-top:10px;font-size:12.5px">Les rues saturent vite. Faites entrer plusieurs routes dans la ville, ou faites-la traverser par une nationale.</p>`;
+  } else {
+    h=`<h2>${terr}</h2><div class="sub">Terrain libre</div><dl class="kv">`+
+      [1,2,3,4].map(L=>`<dt>${ROAD[L].name}${unlocked(L)?'':' (verrouillée)'}</dt><dd>${eur(buildCost(i,L))}</dd>`).join('')+`</dl>
+      ${terrain[i]===2?'<p class="hint" style="margin-top:10px">Construire ici crée un pont : 5 fois plus cher, entretien doublé.</p>':terrain[i]===3?'<p class="hint" style="margin-top:10px">Construire ici creuse un tunnel : 4 fois plus cher, entretien doublé.</p>':''}`;
+  }
+  el.innerHTML=h;
+  const f=fieldVals(i); el.querySelectorAll('[data-f]').forEach(s=>{const v=f[s.dataset.f];if(v!==undefined)s.textContent=v});
+  const on=(id,fn)=>{const b=el.querySelector('#'+id);if(b)b.onclick=fn};
+  on('aTow',()=>{towAccident(i);lastSig=''});
+  on('aTele',()=>{if(money<TELE_COST){toast(`Fonds insuffisants : il faut ${eur(TELE_COST)}.`,'bad');return}spend(TELE_COST,'build');tollTele[i]=1;toast('Télépéage installé.','ok');sfx.build();lastSig=''});
+  on('aRemove',()=>{toll[i]=0;tollTele[i]=0;radar[i]=0;equipRev[i]=0;updateRadarCover();toast('Équipement retiré.');lastSig=''});
+  on('aUp',()=>{commitRoad([i],Math.max(road[i],curLevel(i))+1);lastSig=''});
+  on('aBull',()=>{commitBulldoze([i]);lastSig=''});
+  const rg=el.querySelector('#tRange');
+  if (rg) rg.oninput=()=>{toll[i]=+rg.value;$('#tPrice').textContent=(+rg.value).toFixed(1).replace('.',',')+' €'};
+}
+
+function renderObjectives(){
+  const el=$('#tab-obj'), act=objectives.filter(o=>!o.done).slice(0,3);
+  let h=`<h2>Objectifs</h2><div class="sub">${objDone()} sur ${objectives.length} atteints · les récompenses tombent dans le budget</div>`;
+  if (!act.length) h+='<p class="hint">Tous les objectifs sont atteints. Votre réseau est une référence nationale. Continuez à le faire grandir !</p>';
+  for (const o of act){
+    const p=clamp(objProgress(o),0,1);
+    h+=`<div class="obj"><div class="obj-h"><b>${esc(o.text)}</b><span class="rw">+${eur(o.reward)}</span></div><div class="bar"><i style="width:${p*100}%"></i></div><small>${Math.floor(p*100)} %</small></div>`;
+  }
+  h+='<h4>Déblocages</h4>';
+  for (const [k,n,lbl] of [['radar',1,'Radar'],[3,2,'Nationale'],['tele',3,'Télépéage'],[4,4,'Autoroute']])
+    h+=`<div class="unl ${unlocked(k)?'ok':''}"><span>${lbl}</span><span>${unlocked(k)?'Disponible':n+' objectif'+(n>1?'s':'')}</span></div>`;
+  el.innerHTML=h;
+}
+function renderCities(){
+  const el=$('#tab-city');
+  const list=cities.slice().sort((a,b)=>b.pop-a.pop);
+  let h=`<h2>Villes</h2><div class="sub">${cities.length} communes · ${fmt(totalPop())} habitants</div>`;
+  for (const c of list){
+    const linked=c.dest.length>0;
+    h+=`<button class="crow" data-c="${c.id}"><b>${esc(c.name)}</b><small>${fmt(c.pop)} hab.</small>
+      <small>${linked?`${c.dest.length} ville${c.dest.length>1?'s':''} accessible${c.dest.length>1?'s':''}`:'Isolée'}</small><small class="${satClass(c.sat)}">${pct(c.sat)} · ${(c.g>=0?'+':'')}${(c.g*100).toFixed(1)} %</small>
+      <div class="bar"><i style="width:${c.sat*100}%;background:var(--${c.sat<.4?'bad':c.sat<.6?'warn':'ok'})"></i></div></button>`;
+  }
+  el.innerHTML=h;
+  el.querySelectorAll('.crow').forEach(b=>b.onclick=()=>{const c=cities[+b.dataset.c];const i=c.y*W+c.x;centerOn(i,Math.max(cam.z,1.3));select(i)});
+}
+function renderFin(){
+  const fc=$('#finCv'), w=fc.clientWidth||270, h=120;
+  fc.width=w*dpr; fc.height=h*dpr;
+  const g=fc.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+  const inc=Object.values(today.inc).reduce((a,b)=>a+b,0), exp=Object.values(today.exp).reduce((a,b)=>a+b,0);
+  const data=history.slice(-13).map(x=>({l:'J'+x.d,v:x.net})).concat([{l:'Auj.',v:inc-exp,cur:true}]);
+  const mx=Math.max(1000,...data.map(d=>Math.abs(d.v))), mid=h/2-6, bw=(w-8)/14;
+  g.strokeStyle='rgba(152,164,192,.35)'; g.lineWidth=1; g.beginPath(); g.moveTo(0,mid+.5); g.lineTo(w,mid+.5); g.stroke();
+  g.font='600 10px Barlow, sans-serif'; g.fillStyle='#98a4c0'; g.textAlign='left';
+  g.fillText('+'+eur(mx),2,10); g.fillText('−'+eur(mx),2,h-16);
+  data.forEach((d,k)=>{
+    const x=4+k*bw+bw*.18, bh=Math.abs(d.v)/mx*(mid-14);
+    g.fillStyle=d.v>=0?'#45c08a':'#ee5a5a'; g.globalAlpha=d.cur?.55:1;
+    g.fillRect(x,d.v>=0?mid-bh:mid+1,bw*.64,Math.max(1,bh)); g.globalAlpha=1;
+  });
+  g.textAlign='center'; g.fillStyle='#98a4c0';
+  if (data.length) {g.fillText(data[data.length-1].l,4+(data.length-1)*bw+bw/2,h-3); if(data.length>1)g.fillText(data[0].l,4+bw/2,h-3)}
+  const row=(a,b,cls='')=>`<dt>${a}</dt><dd class="${cls}">${b}</dd>`;
+  $('#finBody').innerHTML=`<h4>Aujourd'hui</h4><dl class="kv">
+    ${row('Trajets réalisés',eur(today.inc.trips),'pos')}${row('Péages',eur(today.inc.toll),'pos')}${row('Amendes',eur(today.inc.fines),'pos')}${row('Primes d\'objectifs',eur(today.inc.bonus),'pos')}${row('Autres recettes',eur(today.inc.other),'pos')}
+    ${row('Constructions',eur(-today.exp.build),'neg')}${row('Dépanneuses',eur(-today.exp.other),'neg')}
+    ${row('Solde du jour',(inc-exp>=0?'+':'')+eur(inc-exp),inc-exp>=0?'pos':'neg')}</dl>
+    <p class="hint" style="margin-top:10px;font-size:12.5px">À minuit : impôts locaux (selon population et satisfaction) et entretien des routes, péages et radars.</p>
+    <h4>Depuis le début</h4><dl class="kv">${row('Trajets',fmt(stats.totalTrips))}${row('Trajets abandonnés',fmt(stats.failed))}${row('Renoncements (péages chers)',fmt(stats.cancelled||0))}${row('Péages encaissés',eur(stats.tollTotal))}${row('Accidents',fmt(stats.accTotal))}</dl>`;
+}
+let lastTabRefresh=0;
+function refreshTabs(force){
+  const now=performance.now();
+  if (curTab==='sel') renderSel();
+  if (!force && now-lastTabRefresh<1000) return;
+  lastTabRefresh=now;
+  if (curTab==='obj') renderObjectives(); else if (curTab==='city') renderCities(); else if (curTab==='fin') renderFin();
+}
+function updateTop(){
+  $('#sMoney').textContent=eur(money); $('#sMoney').className=money<0?'neg':'';
+  const net=Object.values(today.inc).reduce((a,b)=>a+b,0)-Object.values(today.exp).reduce((a,b)=>a+b,0);
+  const d=$('#sDelta'); d.textContent=(net>=0?'+':'')+eur(net)+' auj.'; d.className=net>=0?'pos':'neg';
+  $('#sPop').textContent=fmt(totalPop());
+  const s=avgSat(); $('#sSat').textContent=pct(s); $('#sSat').className=satClass(s);
+  $('#sVeh').textContent=fmt(vehicles.length);
+  $('#sDay').textContent='Jour '+dayNum(); $('#sTime').textContent=hm(gameMin);
+  $('#sWeather').textContent=WEATHER[weather.t].n;
+  document.querySelectorAll('#speeds .btn').forEach(b=>b.classList.toggle('on',(paused?0:speed)===+b.dataset.speed));
+  $('#pauseTag').hidden=!paused||gameOver;
+  $('#bHeat').classList.toggle('on',heat); $('#bSound').classList.toggle('on',!muted);
+}
+function setSpeed(s){if(gameOver)return;if(s===0){paused=true}else{paused=false;speed=s;lastSpeed=s}updateTop()}
+
+// Fenêtres
+function modal(html,binds){$('#modalCard').innerHTML=html;$('#modal').hidden=false;for(const k in binds){const b=$('#'+k);if(b)b.onclick=binds[k]}const f=$('#modalCard .btn');if(f)f.focus()}
+function closeModal(){$('#modal').hidden=true}
+const SIGNS='<div class="signrow"><span style="background:#2f6fd6">A 12</span><span style="background:#dc4437">N 7</span><span style="background:#c9a21d">D 104</span></div>';
+function introModal(){
+  const has=hasSave();
+  modal(`${SIGNS}<h1>Grand Réseau</h1><p class="lead">Vous dirigez les routes de la région. Reliez les villes, évitez les bouchons et équilibrez le budget avec les péages. Des villes bien desservies grandissent et rapportent plus d'impôts.</p>
+  <ul>
+    <li>Choisissez une route, puis <b>cliquez-glissez</b> d'une ville à l'autre. Le tracé le moins cher s'affiche ; maintenez <b>Maj</b> pour un tracé droit.</li>
+    <li>Repassez sur une route existante avec un type supérieur pour l'<b>améliorer</b> : chemin, route, nationale puis autoroute.</li>
+    <li>Les <b>péages</b> rapportent à chaque passage. S'ils sont trop chers, les conducteurs prennent une autre route.</li>
+    <li>Ponts et tunnels coûtent cher. Les accidents bloquent la voie : envoyez une dépanneuse.</li>
+    <li><b>Clic droit</b> pour déplacer la carte, <b>molette</b> pour zoomer, <b>H</b> pour voir les bouchons.</li>
+  </ul>
+  <div class="row">${has?'<button class="btn primary" id="mCont">Continuer la partie</button><button class="btn" id="mNew">Nouvelle région</button>':'<button class="btn primary" id="mNew">Commencer</button>'}</div>`,
+  {mCont:()=>{closeModal();if(!load_())newGame()},mNew:()=>{closeModal();newGame()}});
+}
+function helpModal(){
+  const wasPaused=paused; paused=true; updateTop();
+  modal(`<h1>Aide</h1><p class="lead">Raccourcis clavier et règles de base.</p><div class="keys">
+  <kbd>I</kbd><span>Inspecter : infos, tarif des péages, dépanneuse</span>
+  <kbd>1 à 4</kbd><span>Chemin, route, nationale, autoroute</span>
+  <kbd>T</kbd><span>Péage</span><kbd>R</kbd><span>Radar</span><kbd>B</kbd><span>Démolir</span><kbd>M</kbd><span>Déplacer la carte</span>
+  <kbd>Maj + glisser</kbd><span>Tracé droit au lieu du tracé le moins cher</span>
+  <kbd>Clic droit</kbd><span>Déplacer la carte (ou flèches, ou ZQSD)</span>
+  <kbd>Molette</kbd><span>Zoomer</span><kbd>H</kbd><span>Carte des bouchons</span><kbd>Espace</kbd><span>Pause</span>
+  <kbd>Échap</kbd><span>Annuler le tracé en cours</span></div>
+  <ul><li>Les rues des villes roulent à 35 km/h et saturent vite : multipliez les accès.</li>
+  <li>La satisfaction dépend de la durée des trajets par rapport au trajet idéal, et des péages payés.</li>
+  <li>Entretien quotidien : chemin 1 €, route 3 €, nationale 8 €, autoroute 20 € par tronçon (doublé sur les ponts et tunnels).</li>
+  <li>La partie est sauvegardée automatiquement chaque nuit dans ce navigateur.</li></ul>
+  <div class="row"><button class="btn primary" id="mOk">Reprendre</button></div>`,{mOk:()=>{closeModal();paused=wasPaused;updateTop()}});
+}
+function endGame(){
+  gameOver=true; paused=true;
+  modal(`<h1>Faillite</h1><p class="lead">Le budget est passé sous −10 000 €. La région confie ses routes à quelqu'un d'autre.</p>
+  <dl class="kv" style="margin-bottom:18px"><dt>Jours tenus</dt><dd>${dayNum()-1}</dd><dt>Population finale</dt><dd>${fmt(totalPop())}</dd><dt>Trajets réalisés</dt><dd>${fmt(stats.totalTrips)}</dd><dt>Objectifs atteints</dt><dd>${objDone()}</dd></dl>
+  <div class="row"><button class="btn primary" id="mNew">Nouvelle région</button></div>`,{mNew:()=>{closeModal();newGame()}});
+  try{localStorage.removeItem(SAVE_KEY)}catch(e){}
+}
+
+// ================================================================ Sons
+let actx=null;
+function initAudio(){if(actx)return;try{actx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){actx=null}}
+function beep(f,d,type='sine',vol=.05){
+  if (!actx||muted) return;
+  try{const t=actx.currentTime,o=actx.createOscillator(),g=actx.createGain();o.type=type;o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g).connect(actx.destination);o.start(t);o.stop(t+d)}catch(e){}
+}
+const sfx={build(){beep(520,.07,'square',.025);setTimeout(()=>beep(390,.06,'square',.02),50)},coin(){beep(880,.08);setTimeout(()=>beep(1320,.14),70)},crash(){beep(150,.35,'sawtooth',.035)},err(){beep(190,.12,'square',.025)}};
+
+// ================================================================ Sauvegarde
+function hasSave(){try{return !!localStorage.getItem(SAVE_KEY)}catch(e){return false}}
+function save(auto){
+  const sparse=[]; for(let i=0;i<N;i++) if(toll[i]>0||radar[i]) sparse.push([i,toll[i],tollTele[i],radar[i],Math.round(equipRev[i])]);
+  const works=worksList.map(i=>[i,worksLvl[i],worksT[i],worksDur[i]]);
+  const data={v:1,seed,money,gameMin,road:Array.from(road),sparse,works,
+    cities:cities.map(c=>({name:c.name,x:c.x,y:c.y,pop:c.pop,sat:c.sat,g:c.g,village:c.village})),
+    stats,today,history,objectives,weather,nameIdx,heat,muted,cam:{...cam}};
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify(data));if(!auto)toast('Partie sauvegardée dans ce navigateur.','ok')}
+  catch(e){if(!auto)toast('Sauvegarde impossible : le stockage du navigateur est indisponible.','bad')}
+}
+function load_(){
+  let d; try{d=JSON.parse(localStorage.getItem(SAVE_KEY))}catch(e){d=null}
+  if (!d||d.v!==1){toast('Aucune sauvegarde lisible.','bad');return false}
+  try{
+    seed=d.seed; genMap(seed);
+    road.set(d.road);
+    for (const [i,p,t,r,rev] of d.sparse){toll[i]=p;tollTele[i]=t;radar[i]=r;equipRev[i]=rev}
+    worksList=[]; for (const [i,l,t,du] of d.works){worksLvl[i]=l;worksT[i]=t;worksDur[i]=du;worksList.push(i)}
+    cities=[]; for (const c of d.cities){const n=newCity(c.x,c.y,c.pop,c.name,c.village);n.sat=c.sat;n.g=c.g||0;cities.push(n)}
+    money=d.money; gameMin=d.gameMin; stats=d.stats; today=d.today||freshToday(); history=d.history||[]; objectives=d.objectives; weather=d.weather||{t:0,until:gameMin+300};
+    nameIdx=d.nameIdx||0; heat=!!d.heat; muted=!!d.muted;
+    afterWorldChange();
+    if (d.cam){cam.x=d.cam.x;cam.y=d.cam.y;cam.z=d.cam.z;clampCam()}
+    toast(`Partie chargée : jour ${dayNum()}.`,'ok');
+    return true;
+  } catch(e){console.error(e);toast('La sauvegarde est abîmée. Nouvelle partie lancée.','bad');return false}
+}
+function afterWorldChange(){
+  vehicles=[]; accList=[]; accident.fill(0); load.fill(0); flow.fill(0);
+  gameOver=false; paused=false; sel=-1; lastSig=''; drag=null; preview=null;
+  computeUrban(); updateRadarCover(); computeComps(); updateSpeeds();
+  renderTerrain(); renderMap(); renderMini();
+  fitCam(); buildTools(); setTool('inspect'); refreshTabs(true); updateTop();
+}
+function newGame(){
+  seed=(Math.random()*2**31)|0; genMap(seed);
+  money=30000; gameMin=6*60; stats={totalTrips:0,failed:0,tollTotal:0,finesTotal:0,accTotal:0};
+  today=freshToday(); history=[]; weather={t:0,until:gameMin+360}; worksList=[];
+  computeUrban();
+  // Un chemin existe déjà entre les deux villes les plus proches
+  let best=null,bd=1e9;
+  for (const a of cities) for (const b of cities) if (a.id<b.id){const d=Math.hypot(a.x-b.x,a.y-b.y);if(d<bd){bd=d;best=[a,b]}}
+  if (best){const p=planPath(best[0].y*W+best[0].x,best[1].y*W+best[1].x,1);if(p)for(const i of p)if(!urban[i])road[i]=1}
+  objectives=makeObjectives();
+  afterWorldChange();
+  speed=1; lastSpeed=1;
+  if (best) toast(`Un vieux chemin relie déjà ${esc(best[0].name)} et ${esc(best[1].name)}. À vous de construire le reste.`,'ok');
+}
+
+// ================================================================ Entrées
+const tipEl=$('#tip');
+function tileAt(mx,my){const wx=mx/cam.z+cam.x, wy=my/cam.z+cam.y, x=Math.floor(wx/T), y=Math.floor(wy/T);return x<0||y<0||x>=W||y>=H?-1:y*W+x}
+function zoomAt(mx,my,f){const wx=mx/cam.z+cam.x,wy=my/cam.z+cam.y;cam.z=clamp(cam.z*f,.35,3.5);cam.x=wx-mx/cam.z;cam.y=wy-my/cam.z;clampCam()}
+function updatePreview(straight){
+  if (!drag || (drag.type!=='road'&&drag.type!=='bull')) return;
+  let tiles;
+  if (drag.type==='bull' || straight) tiles=lPath(drag.start,drag.end);
+  else tiles=planPath(drag.start,drag.end,drag.lvl)||lPath(drag.start,drag.end);
+  if (drag.type==='bull'){
+    let n=0,ref=0; for(const i of tiles) if(road[i]||worksT[i]>0||toll[i]||radar[i]){n++;if(road[i])ref+=ROAD[road[i]].cost*TERR[terrain[i]].m*.25}
+    preview={kind:'bull',tiles}; tipEl.innerHTML=`Démolir <b>${n}</b> tronçon${n>1?'s':''} · +${eur(ref)}`;
+  } else {
+    let cost=0,n=0,br=0,tu=0; for(const i of tiles){const c=buildCost(i,drag.lvl);if(c>0){cost+=c;n++;if(terrain[i]===2)br++;if(terrain[i]===3)tu++}}
+    const ok=cost<=money;
+    preview={kind:'road',tiles,lvl:drag.lvl,ok,cost};
+    tipEl.innerHTML=`${ROAD[drag.lvl].name} · <b>${n}</b> tronçon${n>1?'s':''}${br?` · ${br} pont${br>1?'s':''}`:''}${tu?` · ${tu} tunnel${tu>1?'s':''}`:''} · <b class="${ok?'':'neg'}">${eur(cost)}</b>${straight?'':' <span style="color:var(--muted)">· Maj : tracé droit</span>'}`;
+  }
+  tipEl.hidden=false;
+}
+function placeTip(e){tipEl.style.left=Math.min(e.clientX+16,VW-tipEl.offsetWidth-8)+'px';tipEl.style.top=Math.min(e.clientY+18,VH-40)+'px'}
+
+const pointers=new Map(); let pinch=null;
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('pointerdown',e=>{
+  initAudio(); if (gameOver) return;
+  try{cv.setPointerCapture(e.pointerId)}catch(_){}
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if (pointers.size===2){
+    drag=null; preview=null; tipEl.hidden=true;
+    const [a,b]=[...pointers.values()], mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+    pinch={d:Math.hypot(a.x-b.x,a.y-b.y)||1,z:cam.z,wx:mx/cam.z+cam.x,wy:my/cam.z+cam.y}; return;
+  }
+  if (e.button===1||e.button===2||tool==='pan'){drag={type:'pan',sx:e.clientX,sy:e.clientY,cx:cam.x,cy:cam.y,moved:false};cv.style.cursor='grabbing';return}
+  if (e.button!==0) return;
+  const t=tileAt(e.clientX,e.clientY); if (t<0) return;
+  const L=toolLevel(tool);
+  if (L){drag={type:'road',start:t,end:t,lvl:L};updatePreview(e.shiftKey);placeTip(e)}
+  else if (tool==='bull'){drag={type:'bull',start:t,end:t};updatePreview(true);placeTip(e)}
+  else if (tool==='toll') placeEquip(t,'toll');
+  else if (tool==='radar') placeEquip(t,'radar');
+  else select(t);
+});
+cv.addEventListener('pointermove',e=>{
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if (pinch && pointers.size>=2){
+    const [a,b]=[...pointers.values()], mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+    cam.z=clamp(pinch.z*Math.hypot(a.x-b.x,a.y-b.y)/pinch.d,.35,3.5); cam.x=pinch.wx-mx/cam.z; cam.y=pinch.wy-my/cam.z; clampCam(); return;
+  }
+  hover=tileAt(e.clientX,e.clientY);
+  if (!drag) return;
+  if (drag.type==='pan'){cam.x=drag.cx-(e.clientX-drag.sx)/cam.z;cam.y=drag.cy-(e.clientY-drag.sy)/cam.z;clampCam();return}
+  const t=hover;
+  if (t>=0 && (t!==drag.end || drag.shift!==e.shiftKey)){drag.end=t;drag.shift=e.shiftKey;updatePreview(drag.type==='bull'||e.shiftKey)}
+  placeTip(e);
+});
+function endPointer(e,commit){
+  pointers.delete(e.pointerId);
+  if (pinch){if(pointers.size<2)pinch=null;return}
+  if (!drag) return;
+  const d=drag; drag=null; tipEl.hidden=true;
+  if (d.type==='pan'){cv.style.cursor=tool==='pan'?'grab':tool==='inspect'?'default':'crosshair';return}
+  if (commit && preview){if(d.type==='road')commitRoad(preview.tiles,d.lvl);else commitBulldoze(preview.tiles)}
+  preview=null;
+}
+cv.addEventListener('pointerup',e=>endPointer(e,true));
+cv.addEventListener('pointercancel',e=>endPointer(e,false));
+cv.addEventListener('pointerleave',()=>{hover=-1});
+cv.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*.0015))},{passive:false});
+
+const keys=new Set();
+const PAN_CODES=['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD'];
+addEventListener('keydown',e=>{
+  if (e.target.tagName==='INPUT') return;
+  if (!$('#modal').hidden){if(e.key==='Escape'&&!gameOver){const b=$('#mOk')||$('#mCont');if(b)b.click()}return}
+  const k=e.key.toLowerCase();
+  // Déplacement par position physique des touches : ZQSD en AZERTY, WASD en QWERTY
+  if (PAN_CODES.includes(e.code)){keys.add(e.code);if(e.code.startsWith('Arrow'))e.preventDefault();return}
+  if (e.code==='Space'){e.preventDefault();setSpeed(paused?lastSpeed:0);return}
+  if (e.key==='Escape'){if(drag&&drag.type!=='pan'){drag=null;preview=null;tipEl.hidden=true}else{setTool('inspect');select(-1)}return}
+  if (e.repeat) return;
+  const digit={Digit1:'r1',Digit2:'r2',Digit3:'r3',Digit4:'r4',Numpad1:'r1',Numpad2:'r2',Numpad3:'r3',Numpad4:'r4'}[e.code];
+  const map={t:'toll',r:'radar',b:'bull',m:'pan',i:'inspect'};
+  if (digit) setTool(digit);
+  else if (map[k]) setTool(map[k]);
+  else if (k==='h'){heat=!heat;updateTop()}
+  else if (e.key==='+'||e.key==='=') zoomAt(VW/2,VH/2,1.25);
+  else if (e.key==='-') zoomAt(VW/2,VH/2,.8);
+});
+addEventListener('keyup',e=>keys.delete(e.code));
+addEventListener('blur',()=>keys.clear());
+function panKeys(rdt){
+  // ZQSD (AZERTY) et WASD (QWERTY) sont reconnus via la position physique des touches
+  let dx=0,dy=0;
+  if (keys.has('ArrowLeft')||keys.has('KeyA')) dx--; if (keys.has('ArrowRight')||keys.has('KeyD')) dx++;
+  if (keys.has('ArrowUp')||keys.has('KeyW')) dy--; if (keys.has('ArrowDown')||keys.has('KeyS')) dy++;
+  if (dx||dy){cam.x+=dx*700*rdt/cam.z;cam.y+=dy*700*rdt/cam.z;clampCam()}
+}
+
+// Minicarte
+function miniJump(e){const r=miniCv.getBoundingClientRect();const x=(e.clientX-r.left)/r.width*W*T,y=(e.clientY-r.top)/r.height*H*T;cam.x=x-VW/cam.z/2;cam.y=y-VH/cam.z/2;clampCam()}
+let miniDrag=false;
+miniCv.addEventListener('pointerdown',e=>{miniDrag=true;try{miniCv.setPointerCapture(e.pointerId)}catch(_){}miniJump(e)});
+miniCv.addEventListener('pointermove',e=>{if(miniDrag)miniJump(e)});
+miniCv.addEventListener('pointerup',()=>miniDrag=false);
+$('#zIn').onclick=()=>zoomAt(VW/2,VH/2,1.25); $('#zOut').onclick=()=>zoomAt(VW/2,VH/2,.8);
+
+// Boutons
+document.querySelectorAll('#speeds .btn').forEach(b=>b.onclick=()=>{initAudio();setSpeed(+b.dataset.speed)});
+$('#bHeat').onclick=()=>{heat=!heat;updateTop()};
+$('#bSound').onclick=()=>{initAudio();muted=!muted;updateTop()};
+$('#bSave').onclick=()=>save(false);
+$('#bHelp').onclick=helpModal;
+$('#bNew').onclick=()=>{
+  const wasPaused=paused; paused=true; updateTop();
+  modal(`<h1>Nouvelle région ?</h1><p class="lead">Une nouvelle carte sera générée. Sauvegardez d'abord si vous voulez reprendre cette partie plus tard.</p>
+  <div class="row"><button class="btn primary" id="mYes">Générer une nouvelle région</button><button class="btn" id="mSaveNew">Sauver puis recommencer</button><button class="btn" id="mOk">Annuler</button></div>`,
+  {mYes:()=>{closeModal();newGame()},mSaveNew:()=>{save(false);closeModal();newGame()},mOk:()=>{closeModal();paused=wasPaused;updateTop()}});
+};
+$('#sideToggle').onclick=()=>$('#side').classList.toggle('closed');
+addEventListener('resize',resize);
+
+// ================================================================ Boucle principale
+let last=performance.now(), lastUi=0;
+function frame(now){
+  const rdt=Math.min(.1,(now-last)/1000); last=now;
+  if (!paused && !gameOver){
+    let gdt=rdt*MIN_PER_SEC*speed;
+    while (gdt>1e-6){const s=Math.min(.25,gdt);simStep(s);gdt-=s;if(gameOver)break}
+  }
+  panKeys(rdt);
+  if (mapDirty && now-lastMapRender>120) renderMap();
+  draw(rdt,now);
+  if (now-lastUi>250){lastUi=now;checkObjectives();updateTop();refreshTabs(false);drawMini()}
+  requestAnimationFrame(frame);
+}
+
+// Démarrage
+resize();
+if ($('#side').offsetWidth && innerWidth<=760) $('#side').classList.add('closed');
+newGame();
+paused=true; updateTop();
+introModal();
+const _close=closeModal; closeModal=function(){_close();if(!gameOver){paused=false;updateTop()}};
+requestAnimationFrame(frame);
+})();
+</script>
